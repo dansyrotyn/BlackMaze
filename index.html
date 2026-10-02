@@ -2558,6 +2558,9 @@ canvas {
 		      if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		      const menuCoinsInput = document.getElementById("game-menu-coins");
 		      if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
+		      if (key === "ball" && typeof window.blackMazeSelectSkinForBallPowerLevel === "function") {
+		        window.blackMazeSelectSkinForBallPowerLevel(level + 1);
+		      }
 		      window.renderBlackMazeIdleProgress();
 		      if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
 		    });
@@ -2738,10 +2741,10 @@ canvas {
 		    const reward = getMazeCompletionReward();
 		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(window.blackMazeCoinCount + reward));
 		    const count = document.getElementById("coin-count");
-		    if (count) count.textContent = formatCoinAmount(window.blackMazeCoinCount);
-		    const menuCoinsInput = document.getElementById("game-menu-coins");
-		    if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
-		    window.renderBlackMazeIdleProgress();
+		      if (count) count.textContent = formatCoinAmount(window.blackMazeCoinCount);
+		      const menuCoinsInput = document.getElementById("game-menu-coins");
+		      if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
+		      window.renderBlackMazeIdleProgress();
 		    window.showBlackMazeVictoryFloat(reward);
 		    window.saveBlackMazeProgress();
 		  };
