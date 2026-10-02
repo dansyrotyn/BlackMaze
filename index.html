@@ -2049,12 +2049,33 @@ canvas {
 		<script type="text/javascript" src="main.js"></script>
 		<script>
 		(() => {
-		  window.blackMazeCoinCount = 0;
+		  const progressKey = "blackmaze-progress-v1";
+		  let savedProgress = window.blackMazeSavedProgress;
+		  if (!savedProgress) {
+		    try { savedProgress = JSON.parse(localStorage.getItem(progressKey) || "{}"); }
+		    catch (_) { savedProgress = {}; }
+		  }
+		  window.blackMazeSavedProgress = savedProgress && typeof savedProgress === "object" ? savedProgress : {};
+		  window.blackMazeCoinCount = Number.isSafeInteger(window.blackMazeSavedProgress.coins) && window.blackMazeSavedProgress.coins >= 0
+		    ? window.blackMazeSavedProgress.coins : 0;
+		  window.blackMazeBallSkin = Number.isInteger(window.blackMazeSavedProgress.ball) && window.blackMazeSavedProgress.ball >= 0
+		    ? window.blackMazeSavedProgress.ball : 0;
+		  const coinCount = document.getElementById("coin-count");
+		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
+		  window.saveBlackMazeProgress = () => {
+		    try {
+		      if (window.blackMazeGameSaveData) window.blackMazeSavedProgress.gameSaveData = window.blackMazeGameSaveData;
+		      window.blackMazeSavedProgress.coins = window.blackMazeCoinCount;
+		      window.blackMazeSavedProgress.ball = window.blackMazeBallSkin;
+		      localStorage.setItem(progressKey, JSON.stringify(window.blackMazeSavedProgress));
+		    } catch (_) {}
+		  };
 		  window.collectBlackMazeCoin = () => {
 		    window.blackMazeCoinCount += 1;
 		    const count = document.getElementById("coin-count");
 		    if (count) count.textContent = String(window.blackMazeCoinCount);
 		    if (typeof window.playBlackMazeCoinSound === "function") window.playBlackMazeCoinSound();
+		    window.saveBlackMazeProgress();
 		  };
 		  window.playBlackMazeCoinSound = () => {
 		    if (window.app && window.app.main && window.app.main.soundEnabled === false) return;
