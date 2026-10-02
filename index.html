@@ -1023,15 +1023,59 @@ canvas {
   right: auto;
   transform: translateY(-50%);
   display: flex;
-  align-items: center;
-  gap: 1vmin;
-  padding: 0.6vmin 1.4vmin;
-  border-radius: 999px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45vmin;
+  padding: 0.75vmin 1.4vmin;
+  border-radius: 1.8vmin;
   background: rgba(255, 248, 225, 0.94);
   color: #684400;
   font-size: 4.2vmin;
   line-height: 1;
   z-index: 12;
+}
+
+#coin-counter-value,
+#painted-tile-counter,
+#ball-move-counter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1vmin;
+}
+
+#painted-tile-counter {
+  min-height: 5vmin;
+  font-size: 4.2vmin;
+  font-weight: 700;
+}
+
+#ball-move-counter {
+  min-height: 5vmin;
+  font-size: 4.2vmin;
+  font-weight: 700;
+}
+
+#ball-move-icon {
+  width: 5vmin;
+  height: 5vmin;
+  min-width: 5vmin;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4.2vmin;
+  line-height: 1;
+}
+
+#painted-tile-icon {
+  width: 5vmin;
+  height: 5vmin;
+  min-width: 5vmin;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4.2vmin;
+  line-height: 1;
 }
 
 #combo-meter-label {
@@ -2161,9 +2205,19 @@ canvas {
 				<div id="top-container">
 					<img id="topreset-btn" />
 					<div id="gamemodes-btn"></div>
-					<div id="coin-counter" aria-label="Coins collected">
-						<span class="coin-icon" aria-hidden="true">₿</span>
-						<span id="coin-count">0</span>
+					<div id="coin-counter" aria-label="Coins, painted tiles, and ball movements">
+						<div id="coin-counter-value">
+							<span class="coin-icon" aria-hidden="true">₿</span>
+							<span id="coin-count">0</span>
+						</div>
+						<div id="painted-tile-counter" aria-label="Total painted tiles">
+							<span id="painted-tile-icon" aria-hidden="true">🟦</span>
+							<span id="painted-tile-count">0</span>
+						</div>
+						<div id="ball-move-counter" aria-label="Total ball moves">
+							<span id="ball-move-icon" aria-hidden="true">➡️</span>
+							<span id="ball-move-count">0</span>
+						</div>
 					</div>
 					<div id="ball-btn">
 						<img id="ballbtn-img" />
@@ -2440,6 +2494,14 @@ canvas {
 		  renderHeatScore();
 		  const coinCount = document.getElementById("coin-count");
 		  if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
+		  const paintedTileCount = document.getElementById("painted-tile-count");
+		  const savedPaintedTileCount = Number(window.blackMazeSavedProgress.paintedTiles);
+		  window.blackMazePaintedTileCount = Number.isSafeInteger(savedPaintedTileCount) && savedPaintedTileCount >= 0 ? savedPaintedTileCount : 0;
+		  if (paintedTileCount) paintedTileCount.textContent = String(window.blackMazePaintedTileCount);
+		  const ballMoveCount = document.getElementById("ball-move-count");
+		  const savedBallMoveCount = Number(window.blackMazeSavedProgress.ballMoves);
+		  window.blackMazeBallMoveCount = Number.isSafeInteger(savedBallMoveCount) && savedBallMoveCount >= 0 ? savedBallMoveCount : 0;
+		  if (ballMoveCount) ballMoveCount.textContent = String(window.blackMazeBallMoveCount);
 		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
 		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Maze", coin: "Coin" };
 		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "MAZE", coin: "COIN" };
@@ -2761,14 +2823,24 @@ canvas {
 		      window.blackMazeSavedProgress.ball = window.blackMazeBallSkin;
 		      window.blackMazeSavedProgress.idlePowers = window.blackMazeIdlePowerLevels;
 		      window.blackMazeSavedProgress.heatScore = window.blackMazeHeatScore;
+		      window.blackMazeSavedProgress.paintedTiles = window.blackMazePaintedTileCount;
+		      window.blackMazeSavedProgress.ballMoves = window.blackMazeBallMoveCount;
 		      localStorage.setItem(progressKey, JSON.stringify(window.blackMazeSavedProgress));
 		    } catch (_) {}
 		  };
 		  window.blackMazePaintedCell = () => {
+		    window.blackMazePaintedTileCount = Math.min(Number.MAX_SAFE_INTEGER, (Number(window.blackMazePaintedTileCount) || 0) + 1);
+		    if (paintedTileCount) paintedTileCount.textContent = String(window.blackMazePaintedTileCount);
+		    if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
 		    decayCombo();
 		    window.delayBlackMazeComboFall(window.blackMazeComboHoldSeconds * 1000);
 		    window.blackMazeComboPercent = Math.min(100, (Number(window.blackMazeComboPercent) || 0) + 1);
 		    updateComboMeter();
+		  };
+		  window.blackMazeBallMoved = () => {
+		    window.blackMazeBallMoveCount = Math.min(Number.MAX_SAFE_INTEGER, (Number(window.blackMazeBallMoveCount) || 0) + 1);
+		    if (ballMoveCount) ballMoveCount.textContent = String(window.blackMazeBallMoveCount);
+		    if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
 		  };
 		  window.showBlackMazeCoinFloat = (ndcX, ndcY, reward = getCoinCollectionReward()) => {
 		    const x = Number.isFinite(Number(ndcX)) ? (Number(ndcX) + 1) * 0.5 * window.innerWidth : window.innerWidth * 0.5;
