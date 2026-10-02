@@ -2188,6 +2188,12 @@ canvas {
 								<input id="game-menu-skin-debug-visuals" type="checkbox">
 								<span>Show locked skin visuals (debug)</span>
 							</label>
+							<label for="game-menu-monster-mode">Monster ball mode (debug)</label>
+							<select id="game-menu-monster-mode">
+								<option value="camera">3D — face the player (current)</option>
+								<option value="movement">3D — face movement direction (look at player when moving down)</option>
+								<option value="sprite">2D sprite</option>
+							</select>
 							<label for="game-menu-vertical-fit">Vertical fit (higher = smaller maze)</label>
 							<input id="game-menu-vertical-fit" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
 							<label for="game-menu-combo-fall">Combo fall (% per second)</label>
@@ -2434,7 +2440,7 @@ canvas {
 		    }
 		  };
 		  window.blackMazeCoinPowerMultiplierCoef = ECONOMICS.coin_power_multiplier_coef;
-		  const economicsSourceStorageKey = "blackmaze-economics-source-v10";
+		  const economicsSourceStorageKey = "blackmaze-economics-source-v12";
 		  const applyEconomicsText = source => {
 		    const readValue = name => {
 		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
@@ -2515,7 +2521,7 @@ canvas {
 		  });
 		  const getIdlePowerUpgradePrice = (key, level) => {
 		    const formula = ECONOMICS.upgrade_prices[key];
-		    return Math.pow(formula.base, level) * formula.multiplier;
+		    return Math.ceil(Math.pow(formula.base, level) * formula.multiplier);
 		  };
 		  const getHeatCoefficient = () => {
 		    const heatPercent = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
@@ -2594,9 +2600,9 @@ canvas {
 		  const savedCoinPitchGainRaw = localStorage.getItem("blackmaze-coin-pitch-gain-v1");
 		  const savedCoinPitchGain = Number(savedCoinPitchGainRaw);
 		  window.blackMazeCoinPitchGainPerCoin = savedCoinPitchGainRaw !== null && Number.isFinite(savedCoinPitchGain) && savedCoinPitchGain >= 0 && savedCoinPitchGain <= 200 ? savedCoinPitchGain : 10;
-		  const savedCoinPitchFallRaw = localStorage.getItem("blackmaze-coin-pitch-fall-v1");
+		  const savedCoinPitchFallRaw = localStorage.getItem("blackmaze-coin-pitch-fall-v2");
 		  const savedCoinPitchFall = Number(savedCoinPitchFallRaw);
-		  window.blackMazeCoinPitchFallRate = savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 5;
+		  window.blackMazeCoinPitchFallRate = savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 25;
 		  window.blackMazeCoinPitchPercent = 0;
 		  let coinPitchUpdatedAt = Date.now();
 		  
@@ -3003,14 +3009,23 @@ canvas {
 		    window.blackMazeShowLockedSkinVisuals = skinDebugVisualsInput.checked;
 		    localStorage.setItem(skinDebugVisualsStorageKey, String(window.blackMazeShowLockedSkinVisuals));
 		  });
+		  const monsterModeSelect = document.getElementById("game-menu-monster-mode");
+		  const monsterModeStorageKey = "blackmaze-monster-debug-mode-v2";
+		  monsterModeSelect.value = window.blackMazeMonsterDebugMode || "movement";
+		  monsterModeSelect.addEventListener("change", () => {
+		    window.blackMazeMonsterDebugMode = monsterModeSelect.value;
+		    try { localStorage.setItem(monsterModeStorageKey, window.blackMazeMonsterDebugMode); } catch (_) {}
+		    const activeMonster = window.blackMazeActiveBallVisual;
+		    if (activeMonster && activeMonster.parent && typeof activeMonster.initSprite === "function") activeMonster.initSprite();
+		  });
 		  const progress = window.blackMazeSavedProgress || {};
 		  const modeLevel = Number(progress.gameSaveData && progress.gameSaveData["0_lev"]);
 		  coinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
 		  levelInput.value = String(Number.isInteger(modeLevel) && modeLevel >= 0 ? modeLevel + 1 : 1);
 		  const savedZoom = Number(localStorage.getItem("blackmaze-zoom-coefficient-v1"));
 		  window.blackMazeZoomCoefficient = Number.isFinite(savedZoom) && savedZoom >= 0.75 && savedZoom <= 2.5 ? savedZoom : 1.2;
-		  const savedVerticalFit = Number(localStorage.getItem("blackmaze-vertical-fit-v1"));
-		  verticalFitInput.value = String(Number.isFinite(savedVerticalFit) && savedVerticalFit >= 0.75 && savedVerticalFit <= 2.5 ? savedVerticalFit : 1.25);
+		  const savedVerticalFit = Number(localStorage.getItem("blackmaze-vertical-fit-v3"));
+		  verticalFitInput.value = String(Number.isFinite(savedVerticalFit) && savedVerticalFit >= 0.75 && savedVerticalFit <= 2.5 ? savedVerticalFit : 0.75);
 		  window.blackMazeVerticalFitCoefficient = Number(verticalFitInput.value);
 		  const savedComboFallRaw = window.readBlackMazeComboSetting("blackmaze-combo-fall-v1", "blackmaze-pitch-fall-v1");
 		  const savedComboFall = Number(savedComboFallRaw);
@@ -3032,9 +3047,9 @@ canvas {
 		  const savedCoinPitchGain = Number(savedCoinPitchGainRaw);
 		  coinPitchGainInput.value = String(savedCoinPitchGainRaw !== null && Number.isFinite(savedCoinPitchGain) && savedCoinPitchGain >= 0 && savedCoinPitchGain <= 200 ? savedCoinPitchGain : 10);
 		  window.blackMazeCoinPitchGainPerCoin = Number(coinPitchGainInput.value);
-		  const savedCoinPitchFallRaw = localStorage.getItem("blackmaze-coin-pitch-fall-v1");
+		  const savedCoinPitchFallRaw = localStorage.getItem("blackmaze-coin-pitch-fall-v2");
 		  const savedCoinPitchFall = Number(savedCoinPitchFallRaw);
-		  coinPitchFallInput.value = String(savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 5);
+		  coinPitchFallInput.value = String(savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 25);
 		  window.blackMazeCoinPitchFallRate = Number(coinPitchFallInput.value);
 		  wallSoundSelect.value = "2";
 		  finishSoundSelect.value = "1";
@@ -3138,10 +3153,10 @@ canvas {
 		    window.blackMazeComboPulseMaxScale = comboPulseMaxScale;
 		    window.blackMazeComboPulseSpeed = comboPulseSpeed;
 		    localStorage.setItem("blackmaze-coin-pitch-gain-v1", String(coinPitchGain));
-		    localStorage.setItem("blackmaze-coin-pitch-fall-v1", String(coinPitchFallRate));
+		    localStorage.setItem("blackmaze-coin-pitch-fall-v2", String(coinPitchFallRate));
 		    window.blackMazeCoinPitchFallRate = coinPitchFallRate;
 		    window.blackMazeCoinPitchGainPerCoin = coinPitchGain;
-		    localStorage.setItem("blackmaze-vertical-fit-v1", String(verticalFit));
+		    localStorage.setItem("blackmaze-vertical-fit-v3", String(verticalFit));
 		    localStorage.setItem("blackmaze-wall-sound-v1", wallSoundSelect.value);
 		    localStorage.setItem("blackmaze-finish-sound-v1", finishSoundSelect.value);
 		    localStorage.setItem("blackmaze-coin-sound-v1", coinSoundSelect.value);

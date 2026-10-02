@@ -1,4 +1,12 @@
 (function (global) {
+  var modeKey = "blackmaze-monster-debug-mode-v2";
+  var debugMode = global.blackMazeMonsterDebugMode;
+  try {
+    if (!debugMode) debugMode = global.localStorage.getItem(modeKey);
+  } catch (_) {}
+  if (["camera", "movement", "sprite"].indexOf(debugMode) === -1) debugMode = "movement";
+  global.blackMazeMonsterDebugMode = debugMode;
+
   global.createBlackMazeMonsterModel = function (THREE) {
     var model = new THREE.Group();
     model.userData.blackMazeMonsterModel = true;
