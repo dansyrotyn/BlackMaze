@@ -1880,7 +1880,7 @@ canvas {
   top: 1.5vmin;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 30;
+  z-index: 40;
   font-family: inherit;
   color: #252525;
 }
@@ -1901,15 +1901,17 @@ canvas {
   top: calc(100% + 1vmin);
   left: 50%;
   transform: translateX(-50%);
-  width: min(76vw, 48vmin);
+  width: min(84vw, 60vmin);
+  max-height: 80vh;
+  overflow-y: auto;
   box-sizing: border-box;
-  padding: 2.5vmin;
+  padding: 3.5vmin;
   border-radius: 2vmin;
   background: rgba(255, 255, 255, 0.97);
   box-shadow: 0 1vmin 3vmin rgba(0, 0, 0, 0.35);
   display: grid;
-  gap: 1.8vmin;
-  font-size: 3vmin;
+  gap: 2.2vmin;
+  font-size: 3.5vmin;
 }
 #game-menu-panel[hidden] { display: none; }
 #game-menu-panel label { display: grid; gap: 0.7vmin; }
@@ -1922,8 +1924,19 @@ canvas {
   font: inherit;
   font-size: 4vmin;
 }
-#game-menu-panel .menu-actions { display: flex; gap: 1vmin; }
-#game-menu-panel .menu-actions button { flex: 1; font-size: 2.5vmin; padding-inline: 1vmin; }
+#game-menu-panel select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #aaa;
+  border-radius: 1vmin;
+  padding: 1.2vmin;
+  background: #fff;
+  color: #222;
+  font: inherit;
+  font-size: 3.5vmin;
+}
+#game-menu-panel .menu-actions { display: flex; flex-direction: column; gap: 1.5vmin; }
+#game-menu-panel .menu-actions button { width: 100%; font-size: 3.5vmin; padding: 1.5vmin; }
 #game-menu-reset { background: #a72a2a !important; }
 #game-menu-toggle { display: none !important; }
 #unlocked-messagebox-container { display: none !important; pointer-events: none !important; }
@@ -1945,10 +1958,10 @@ canvas {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  z-index: 31;
+  z-index: 30;
   pointer-events: auto;
   cursor: pointer;
-  font-size: 4vmin;
+  font-size: 5vmin;
   font-weight: 700;
 }
 @media screen and (orientation: landscape) {
@@ -1987,10 +2000,35 @@ canvas {
 						<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
 						<label for="game-menu-level">Current level (1–330)</label>
 						<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
-						<label for="game-menu-zoom">Maze zoom coefficient</label>
-						<input id="game-menu-zoom" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
 						<label for="game-menu-vertical-fit">Vertical fit (higher = smaller maze)</label>
 						<input id="game-menu-vertical-fit" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
+						<div id="game-menu-sound-settings" hidden>
+						<label for="game-menu-wall-sound">Wall-hit sound</label>
+						<select id="game-menu-wall-sound">
+							<option value="1">1 — Soft knock</option>
+							<option value="2">2 — Low thump</option>
+							<option value="3">3 — Sharp tap</option>
+							<option value="4">4 — Double knock</option>
+							<option value="5">5 — Metallic tick</option>
+						</select>
+						<label for="game-menu-finish-sound">Level-finished sound</label>
+						<select id="game-menu-finish-sound">
+							<option value="1">1 — Bright fanfare</option>
+							<option value="2">2 — Warm arpeggio</option>
+							<option value="3">3 — High chimes</option>
+							<option value="4">4 — Falling bells</option>
+							<option value="5">5 — Victory chord</option>
+						</select>
+						<label for="game-menu-coin-sound">Gold coin sound</label>
+						<select id="game-menu-coin-sound">
+							<option value="1">1 — Bright chime</option>
+							<option value="2">2 — Double clink</option>
+							<option value="3">3 — Low coin</option>
+							<option value="4">4 — Sparkle</option>
+							<option value="5">5 — Soft plink</option>
+							<option value="6">6 — Bell drop</option>
+						</select>
+						</div>
 						<div class="menu-actions">
 							<button id="game-menu-apply" type="button">SAVE</button>
 							<button id="game-menu-reset" type="button">RESET PROGRESS</button>
@@ -2161,25 +2199,109 @@ canvas {
 		    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 		    if (!AudioContextClass) return;
 		    const context = window.blackMazeAudioContext || (window.blackMazeAudioContext = new AudioContextClass());
-		    const playChime = () => {
-		      const now = context.currentTime;
-		      [880, 1320].forEach((frequency, index) => {
-		        const start = now + index * 0.075;
-		        const oscillator = context.createOscillator();
-		        const gain = context.createGain();
-		        oscillator.type = "sine";
-		        oscillator.frequency.setValueAtTime(frequency, start);
-		        gain.gain.setValueAtTime(0.0001, start);
-		        gain.gain.exponentialRampToValueAtTime(0.12, start + 0.015);
-		        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.2);
-		        oscillator.connect(gain);
-		        gain.connect(context.destination);
-		        oscillator.start(start);
-		        oscillator.stop(start + 0.21);
-		      });
+		    const variant = Number(localStorage.getItem("blackmaze-coin-sound-v1")) || 4;
+		    const patterns = {
+		      1: [
+		        { frequency: 880, endFrequency: 860, duration: 0.2, volume: 0.12 },
+		        { frequency: 1320, endFrequency: 1280, delay: 0.075, duration: 0.2, volume: 0.1 }
+		      ],
+		      2: [
+		        { frequency: 660, endFrequency: 610, duration: 0.12, volume: 0.11, type: "triangle" },
+		        { frequency: 990, endFrequency: 920, delay: 0.08, duration: 0.17, volume: 0.09, type: "triangle" }
+		      ],
+		      3: [
+		        { frequency: 520, endFrequency: 430, duration: 0.2, volume: 0.13, type: "sine" },
+		        { frequency: 780, endFrequency: 700, delay: 0.045, duration: 0.16, volume: 0.06, type: "sine" }
+		      ],
+		      4: [
+		        { frequency: 1175, endFrequency: 1140, duration: 0.13, volume: 0.075 },
+		        { frequency: 1568, endFrequency: 1520, delay: 0.055, duration: 0.14, volume: 0.065 },
+		        { frequency: 2093, endFrequency: 2030, delay: 0.11, duration: 0.16, volume: 0.045 }
+		      ],
+		      5: [
+		        { frequency: 740, endFrequency: 590, duration: 0.24, volume: 0.1, type: "sine" },
+		        { frequency: 587, endFrequency: 494, delay: 0.08, duration: 0.25, volume: 0.07, type: "sine" }
+		      ],
+		      6: [
+		        { frequency: 1047, endFrequency: 790, duration: 0.18, volume: 0.085, type: "triangle" },
+		        { frequency: 698, endFrequency: 523, delay: 0.06, duration: 0.2, volume: 0.075, type: "sine" }
+		      ]
 		    };
+		    const playChime = () => playTonePattern(context, patterns[variant] || patterns[1]);
 		    if (context.state === "suspended") context.resume().then(playChime).catch(() => {});
 		    else playChime();
+		  };
+		  const playTonePattern = (context, events) => {
+		    const now = context.currentTime;
+		    events.forEach(({ frequency, endFrequency, delay = 0, duration = 0.12, volume = 0.08, type = "sine" }) => {
+		      const start = now + delay;
+		      const oscillator = context.createOscillator();
+		      const gain = context.createGain();
+		      oscillator.type = type;
+		      oscillator.frequency.setValueAtTime(frequency, start);
+		      oscillator.frequency.exponentialRampToValueAtTime(endFrequency || frequency * 0.98, start + duration);
+		      gain.gain.setValueAtTime(0.0001, start);
+		      gain.gain.exponentialRampToValueAtTime(volume, start + 0.008);
+		      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+		      oscillator.connect(gain);
+		      gain.connect(context.destination);
+		      oscillator.start(start);
+		      oscillator.stop(start + duration + 0.01);
+		    });
+		  };
+		  let lastWallSoundAt = 0;
+		  window.playBlackMazeWallSound = () => {
+		    const now = Date.now();
+		    if (now - lastWallSoundAt < 180) return;
+		    lastWallSoundAt = now;
+		    if (window.app && window.app.main && window.app.main.soundEnabled === false) return;
+		    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+		    if (!AudioContextClass) return;
+		    const context = window.blackMazeAudioContext || (window.blackMazeAudioContext = new AudioContextClass());
+		    const variant = Number(localStorage.getItem("blackmaze-wall-sound-v1")) || 2;
+		    const patterns = {
+		      1: [{ frequency: 190, endFrequency: 75, duration: 0.11, volume: 0.14, type: "triangle" }],
+		      2: [{ frequency: 125, endFrequency: 48, duration: 0.16, volume: 0.2, type: "sine" }],
+		      3: [{ frequency: 420, endFrequency: 150, duration: 0.055, volume: 0.07, type: "square" }],
+		      4: [
+		        { frequency: 260, endFrequency: 110, duration: 0.065, volume: 0.09, type: "triangle" },
+		        { frequency: 180, endFrequency: 70, delay: 0.075, duration: 0.11, volume: 0.08, type: "triangle" }
+		      ],
+		      5: [
+		        { frequency: 620, endFrequency: 240, duration: 0.15, volume: 0.07, type: "sine" },
+		        { frequency: 980, endFrequency: 500, delay: 0.025, duration: 0.12, volume: 0.035, type: "sine" }
+		      ]
+		    };
+		    const playImpact = () => playTonePattern(context, patterns[variant] || patterns[1]);
+		    if (context.state === "suspended") context.resume().then(playImpact).catch(() => {});
+		    else playImpact();
+		  };
+		  window.playBlackMazeLevelFinishedSound = () => {
+		    if (window.app && window.app.main && window.app.main.soundEnabled === false) return;
+		    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+		    if (!AudioContextClass) return;
+		    const context = window.blackMazeAudioContext || (window.blackMazeAudioContext = new AudioContextClass());
+		    const variant = Number(localStorage.getItem("blackmaze-finish-sound-v1")) || 1;
+		    const motifs = {
+		      1: { type: "sine", step: 0.105, duration: 0.32, notes: [523, 659, 784, 1047] },
+		      2: { type: "triangle", step: 0.13, duration: 0.38, notes: [392, 494, 587, 784] },
+		      3: { type: "sine", step: 0.09, duration: 0.27, notes: [784, 988, 1175, 1568] },
+		      4: { type: "triangle", step: 0.12, duration: 0.34, notes: [1047, 880, 698, 523] },
+		      5: { type: "sine", step: 0.1, duration: 0.4, notes: [523, 659, 784, 1047] }
+		    };
+		    const motif = motifs[variant] || motifs[1];
+		    const events = motif.notes.map((frequency, index) => ({
+		      frequency,
+		      endFrequency: frequency * (variant === 4 ? 0.94 : 0.99),
+		      delay: index * motif.step,
+		      duration: motif.duration,
+		      volume: variant === 5 ? 0.075 : 0.09,
+		      type: motif.type
+		    }));
+		    if (variant === 5) events.push({ frequency: 659, endFrequency: 650, delay: 0, duration: 0.48, volume: 0.045, type: "triangle" });
+		    const playFanfare = () => playTonePattern(context, events);
+		    if (context.state === "suspended") context.resume().then(playFanfare).catch(() => {});
+		    else playFanfare();
 		  };
 		  const keyDirections = {
 		    w: 'up', arrowup: 'up',
@@ -2242,25 +2364,40 @@ canvas {
 		  const toggle = document.getElementById("game-menu-toggle");
 		  const levelLabel = document.getElementById("level-text");
 		  const panel = document.getElementById("game-menu-panel");
+		  const menuScrollKey = "blackmaze-menu-scroll-v1";
+		  const savedMenuScroll = Number(localStorage.getItem(menuScrollKey));
+		  let menuScrollPosition = Number.isFinite(savedMenuScroll) && savedMenuScroll >= 0 ? savedMenuScroll : 0;
+		  panel.addEventListener("scroll", () => {
+		    menuScrollPosition = panel.scrollTop;
+		    try { localStorage.setItem(menuScrollKey, String(menuScrollPosition)); } catch (_) {}
+		  }, { passive: true });
 		  const coinsInput = document.getElementById("game-menu-coins");
 		  const levelInput = document.getElementById("game-menu-level");
-		  const zoomInput = document.getElementById("game-menu-zoom");
 		  const verticalFitInput = document.getElementById("game-menu-vertical-fit");
+		  const wallSoundSelect = document.getElementById("game-menu-wall-sound");
+		  const finishSoundSelect = document.getElementById("game-menu-finish-sound");
+		  const coinSoundSelect = document.getElementById("game-menu-coin-sound");
 		  const progress = window.blackMazeSavedProgress || {};
 		  const modeLevel = Number(progress.gameSaveData && progress.gameSaveData["0_lev"]);
 		  coinsInput.value = String(Number.isSafeInteger(progress.coins) && progress.coins >= 0 ? progress.coins : 0);
 		  levelInput.value = String(Number.isInteger(modeLevel) && modeLevel >= 0 ? modeLevel + 1 : 1);
 		  const savedZoom = Number(localStorage.getItem("blackmaze-zoom-coefficient-v1"));
-		  zoomInput.value = String(Number.isFinite(savedZoom) && savedZoom >= 0.75 && savedZoom <= 2.5 ? savedZoom : 1.2);
-		  window.blackMazeZoomCoefficient = Number(zoomInput.value);
+		  window.blackMazeZoomCoefficient = Number.isFinite(savedZoom) && savedZoom >= 0.75 && savedZoom <= 2.5 ? savedZoom : 1.2;
 		  const savedVerticalFit = Number(localStorage.getItem("blackmaze-vertical-fit-v1"));
 		  verticalFitInput.value = String(Number.isFinite(savedVerticalFit) && savedVerticalFit >= 0.75 && savedVerticalFit <= 2.5 ? savedVerticalFit : 1.25);
 		  window.blackMazeVerticalFitCoefficient = Number(verticalFitInput.value);
+		  wallSoundSelect.value = "2";
+		  finishSoundSelect.value = "1";
+		  coinSoundSelect.value = "4";
+		  localStorage.setItem("blackmaze-wall-sound-v1", "2");
+		  localStorage.setItem("blackmaze-finish-sound-v1", "1");
+		  localStorage.setItem("blackmaze-coin-sound-v1", "4");
 		  if (window.app && window.app.main && typeof window.app.main.resizeNow === "function") window.app.main.resizeNow();
 
 		  const toggleMenu = () => {
 		    const open = panel.hidden;
 		    panel.hidden = !open;
+		    if (open) panel.scrollTop = menuScrollPosition;
 		    toggle.setAttribute("aria-expanded", String(open));
 		    levelLabel.setAttribute("aria-expanded", String(open));
 		  };
@@ -2282,7 +2419,6 @@ canvas {
 		  document.getElementById("game-menu-apply").addEventListener("click", () => {
 		    const coins = Number(coinsInput.value);
 		    const level = Number(levelInput.value);
-		    const zoom = Number(zoomInput.value);
 		    const verticalFit = Number(verticalFitInput.value);
 		    if (!Number.isSafeInteger(coins) || coins < 0) {
 		      coinsInput.setCustomValidity("Enter a whole number of 0 or more.");
@@ -2296,20 +2432,16 @@ canvas {
 		      return;
 		    }
 		    levelInput.setCustomValidity("");
-		    if (!Number.isFinite(zoom) || zoom < 0.75 || zoom > 2.5) {
-		      zoomInput.setCustomValidity("Enter a zoom coefficient from 0.75 to 2.5.");
-		      zoomInput.reportValidity();
-		      return;
-		    }
-		    zoomInput.setCustomValidity("");
 		    if (!Number.isFinite(verticalFit) || verticalFit < 0.75 || verticalFit > 2.5) {
 		      verticalFitInput.setCustomValidity("Enter a vertical fit coefficient from 0.75 to 2.5.");
 		      verticalFitInput.reportValidity();
 		      return;
 		    }
 		    verticalFitInput.setCustomValidity("");
-		    localStorage.setItem("blackmaze-zoom-coefficient-v1", String(zoom));
 		    localStorage.setItem("blackmaze-vertical-fit-v1", String(verticalFit));
+		    localStorage.setItem("blackmaze-wall-sound-v1", wallSoundSelect.value);
+		    localStorage.setItem("blackmaze-finish-sound-v1", finishSoundSelect.value);
+		    localStorage.setItem("blackmaze-coin-sound-v1", coinSoundSelect.value);
 		    const saved = window.blackMazeSavedProgress || {};
 		    saved.coins = coins;
 		    saved.gameSaveData = saved.gameSaveData || {};
