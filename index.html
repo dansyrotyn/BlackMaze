@@ -2265,6 +2265,11 @@ canvas {
 			<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
 							<label for="game-menu-level">Current level (1–330)</label>
 			<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
+							<small>Current totals for testing. Set a value just below a milestone, then make one action to trigger its reward.</small>
+							<label for="game-menu-feat-move-count">Current movement count (test)</label>
+			<input id="game-menu-feat-move-count" type="number" min="0" step="1" inputmode="numeric">
+							<label for="game-menu-feat-tile-count">Current painted tile count (test)</label>
+			<input id="game-menu-feat-tile-count" type="number" min="0" step="1" inputmode="numeric">
 						</div>
 						<div id="game-menu-settings" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-settings" hidden>
 							<label class="menu-debug-toggle" for="game-menu-low-graphics">
@@ -2524,13 +2529,19 @@ canvas {
 		  const coinCount = document.getElementById("coin-count");
 		  if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		  const paintedTileCount = document.getElementById("painted-tile-count");
+		  const paintedTileTestInput = document.getElementById("game-menu-feat-tile-count");
 		  const savedPaintedTileCount = Number(window.blackMazeSavedProgress.paintedTiles);
 		  window.blackMazePaintedTileCount = Number.isSafeInteger(savedPaintedTileCount) && savedPaintedTileCount >= 0 ? savedPaintedTileCount : 0;
 		  if (paintedTileCount) paintedTileCount.textContent = String(window.blackMazePaintedTileCount);
+		  if (paintedTileTestInput) paintedTileTestInput.value = String(window.blackMazePaintedTileCount);
 		  const ballMoveCount = document.getElementById("ball-move-count");
+		  const ballMoveTestInput = document.getElementById("game-menu-feat-move-count");
 		  const savedBallMoveCount = Number(window.blackMazeSavedProgress.ballMoves);
 		  window.blackMazeBallMoveCount = Number.isSafeInteger(savedBallMoveCount) && savedBallMoveCount >= 0 ? savedBallMoveCount : 0;
 		  if (ballMoveCount) ballMoveCount.textContent = String(window.blackMazeBallMoveCount);
+		  if (ballMoveTestInput) ballMoveTestInput.value = String(window.blackMazeBallMoveCount);
+		  const MOVE_FEAT_REWARD_EVERY = 100;
+		  const TILE_FEAT_REWARD_EVERY = 1000;
 		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
 		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Feat", coin: "Coin" };
 		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "FEAT", coin: "COIN" };
@@ -2870,17 +2881,27 @@ canvas {
 		  window.blackMazePaintedCell = () => {
 		    window.blackMazePaintedTileCount = Math.min(Number.MAX_SAFE_INTEGER, (Number(window.blackMazePaintedTileCount) || 0) + 1);
 		    if (paintedTileCount) paintedTileCount.textContent = String(window.blackMazePaintedTileCount);
-		    if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
+		    if (paintedTileTestInput && document.activeElement !== paintedTileTestInput) paintedTileTestInput.value = String(window.blackMazePaintedTileCount);
 		    decayCombo();
 		    window.delayBlackMazeComboFall(window.blackMazeComboHoldSeconds * 1000);
 		    window.blackMazeComboPercent = Math.min(100, (Number(window.blackMazeComboPercent) || 0) + 1);
 		    updateComboMeter();
+		    if (window.blackMazePaintedTileCount % TILE_FEAT_REWARD_EVERY === 0) {
+		      window.awardBlackMazeFeatReward(getMazeCompletionReward() * 10, `${TILE_FEAT_REWARD_EVERY} 🟦 paints`);
+		    } else if (typeof window.saveBlackMazeProgress === "function") {
+		      window.saveBlackMazeProgress();
+		    }
 		  };
 		  window.blackMazeBallMoved = () => {
 		    startComboFallAfterNextMove();
 		    window.blackMazeBallMoveCount = Math.min(Number.MAX_SAFE_INTEGER, (Number(window.blackMazeBallMoveCount) || 0) + 1);
 		    if (ballMoveCount) ballMoveCount.textContent = String(window.blackMazeBallMoveCount);
-		    if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
+		    if (ballMoveTestInput && document.activeElement !== ballMoveTestInput) ballMoveTestInput.value = String(window.blackMazeBallMoveCount);
+		    if (window.blackMazeBallMoveCount % MOVE_FEAT_REWARD_EVERY === 0) {
+		      window.awardBlackMazeFeatReward(getMazeCompletionReward() * 2, `${MOVE_FEAT_REWARD_EVERY} ➡️ moves`);
+		    } else if (typeof window.saveBlackMazeProgress === "function") {
+		      window.saveBlackMazeProgress();
+		    }
 		  };
 		  window.showBlackMazeCoinFloat = (ndcX, ndcY, reward = getCoinCollectionReward()) => {
 		    const x = Number.isFinite(Number(ndcX)) ? (Number(ndcX) + 1) * 0.5 * window.innerWidth : window.innerWidth * 0.5;
@@ -2901,23 +2922,21 @@ canvas {
 		  };
 		  let victoryRewardedForCurrentMaze = false;
 		  window.resetBlackMazeVictoryReward = () => { victoryRewardedForCurrentMaze = false; };
-		  window.showBlackMazeVictoryFloat = (reward = getMazeCompletionReward(), completedLevel = null) => {
+		  window.showBlackMazeFeatFloat = (reward, caption) => {
 		    const rewardColor = "#ffe06a";
 		    const label = document.createElement("div");
 		    label.className = "coin-collect-float feat-reward-float";
 		    label.setAttribute("aria-hidden", "true");
-		    const levelCaption = document.createElement("span");
-		    levelCaption.className = "feat-vfx-level";
-		    levelCaption.textContent = Number.isSafeInteger(Number(completedLevel)) && Number(completedLevel) > 0
-		      ? `LEVEL ${Number(completedLevel)} COMPLETED`
-		      : "LEVEL COMPLETED";
+		    const header = document.createElement("span");
+		    header.className = "feat-vfx-level";
+		    header.textContent = caption;
 		    const title = document.createElement("span");
 		    title.className = "feat-vfx-title";
 		    title.textContent = "FEAT REWARD";
 		    const amount = document.createElement("span");
 		    amount.className = "feat-vfx-amount";
 		    amount.textContent = `+${formatCoinAmount(reward)} ₿`;
-		    label.append(levelCaption, title, amount);
+		    label.append(header, title, amount);
 		    label.style.display = "flex";
 		    label.style.flexDirection = "column";
 		    label.style.alignItems = "center";
@@ -2934,21 +2953,33 @@ canvas {
 		    label.addEventListener("animationend", () => label.remove(), { once: true });
 		    setTimeout(() => label.remove(), 3600);
 		  };
+		  window.showBlackMazeVictoryFloat = (reward = getMazeCompletionReward(), completedLevel = null) => {
+		    const level = Number(completedLevel);
+		    const caption = Number.isSafeInteger(level) && level > 0 ? `LEVEL ${level} COMPLETED` : "LEVEL COMPLETED";
+		    window.showBlackMazeFeatFloat(reward, caption);
+		  };
+		  window.awardBlackMazeFeatReward = (reward, caption) => {
+		    const previousCoins = Number(window.blackMazeCoinCount) || 0;
+		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(previousCoins + reward));
+		    const grantedReward = roundCoinAmount(window.blackMazeCoinCount - previousCoins);
+		    const count = document.getElementById("coin-count");
+		    if (count) count.textContent = formatCoinAmount(window.blackMazeCoinCount);
+		    const menuCoinsInput = document.getElementById("game-menu-coins");
+		    if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
+		    window.renderBlackMazeIdleProgress();
+		    window.showBlackMazeFeatFloat(grantedReward, caption);
+		    window.saveBlackMazeProgress();
+		  };
 		  window.awardBlackMazeVictoryReward = (ndcX, ndcY) => {
 		    if (victoryRewardedForCurrentMaze) return;
 		    victoryRewardedForCurrentMaze = true;
 		    const reward = getMazeCompletionReward();
-		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(window.blackMazeCoinCount + reward));
-		    const count = document.getElementById("coin-count");
-		      if (count) count.textContent = formatCoinAmount(window.blackMazeCoinCount);
-		      const menuCoinsInput = document.getElementById("game-menu-coins");
-		      if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
-		      window.renderBlackMazeIdleProgress();
 		    const levelLabel = document.getElementById("level-text");
 		    const levelMatch = levelLabel && levelLabel.textContent.match(/\d+/);
 		    const completedLevel = levelMatch ? Number(levelMatch[0]) : null;
-		    window.showBlackMazeVictoryFloat(reward, completedLevel);
-		    window.saveBlackMazeProgress();
+		    const level = Number(completedLevel);
+		    const caption = Number.isSafeInteger(level) && level > 0 ? `LEVEL ${level} COMPLETED` : "LEVEL COMPLETED";
+		    window.awardBlackMazeFeatReward(reward, caption);
 		  };
 		  window.collectBlackMazeCoin = (ballNdcX, ballNdcY) => {
 		    const reward = getCoinCollectionReward();
@@ -3186,6 +3217,27 @@ canvas {
 		  }, { passive: true });
 		  const coinsInput = document.getElementById("game-menu-coins");
 		  const levelInput = document.getElementById("game-menu-level");
+		  const moveFeatCountInput = document.getElementById("game-menu-feat-move-count");
+		  const tileFeatCountInput = document.getElementById("game-menu-feat-tile-count");
+		  const configureFeatCounterInput = (input, globalKey, displayId, label) => {
+		    input.value = String(Number(window[globalKey]) || 0);
+		    input.addEventListener("change", () => {
+		      const updatedCount = Number(input.value);
+		      if (!Number.isSafeInteger(updatedCount) || updatedCount < 0) {
+		        input.setCustomValidity(`Enter a whole number of ${label.toLowerCase()} from 0 or more.`);
+		        input.reportValidity();
+		        return;
+		      }
+		      input.setCustomValidity("");
+		      window[globalKey] = updatedCount;
+		      const display = document.getElementById(displayId);
+		      if (display) display.textContent = String(updatedCount);
+		      input.value = String(updatedCount);
+		      if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
+		    });
+		  };
+		  configureFeatCounterInput(moveFeatCountInput, "blackMazeBallMoveCount", "ball-move-count", "moves");
+		  configureFeatCounterInput(tileFeatCountInput, "blackMazePaintedTileCount", "painted-tile-count", "painted tiles");
 		  const verticalFitInput = document.getElementById("game-menu-vertical-fit");
 		  const comboFallInput = document.getElementById("game-menu-combo-fall");
 		  const comboHoldInput = document.getElementById("game-menu-combo-hold");
@@ -3304,6 +3356,8 @@ canvas {
 		    const comboPulseSpeed = Number(comboPulseSpeedInput.value);
 		    const coinPitchGain = Number(coinPitchGainInput.value);
 		    const coinPitchFallRate = Number(coinPitchFallInput.value);
+		    const moveCount = Number(moveFeatCountInput.value);
+		    const paintedTileCountValue = Number(tileFeatCountInput.value);
 		    if (!Number.isFinite(coins) || coins < 0 || coins > Number.MAX_SAFE_INTEGER) {
 		      coinsInput.setCustomValidity("Enter a coin amount from 0 or more.");
 		      coinsInput.reportValidity();
@@ -3317,6 +3371,18 @@ canvas {
 		      return;
 		    }
 		    levelInput.setCustomValidity("");
+		    if (!Number.isSafeInteger(moveCount) || moveCount < 0) {
+		      moveFeatCountInput.setCustomValidity("Enter a whole number of moves from 0 or more.");
+		      moveFeatCountInput.reportValidity();
+		      return;
+		    }
+		    moveFeatCountInput.setCustomValidity("");
+		    if (!Number.isSafeInteger(paintedTileCountValue) || paintedTileCountValue < 0) {
+		      tileFeatCountInput.setCustomValidity("Enter a whole number of painted tiles from 0 or more.");
+		      tileFeatCountInput.reportValidity();
+		      return;
+		    }
+		    tileFeatCountInput.setCustomValidity("");
 		    if (!Number.isFinite(verticalFit) || verticalFit < 0.75 || verticalFit > 2.5) {
 		      verticalFitInput.setCustomValidity("Enter a vertical fit coefficient from 0.75 to 2.5.");
 		      verticalFitInput.reportValidity();
@@ -3361,6 +3427,10 @@ canvas {
 		    coinPitchFallInput.setCustomValidity("");
 		    localStorage.setItem("blackmaze-combo-fall-v1", String(comboFallRate));
 		    localStorage.setItem("blackmaze-combo-delay-v1", String(comboHoldSeconds));
+		    window.blackMazeBallMoveCount = moveCount;
+		    window.blackMazePaintedTileCount = paintedTileCountValue;
+		    document.getElementById("ball-move-count").textContent = String(moveCount);
+		    document.getElementById("painted-tile-count").textContent = String(paintedTileCountValue);
 		    localStorage.setItem("blackmaze-combo-pulse-scale-v1", String(comboPulseMaxScale));
 		    localStorage.setItem("blackmaze-combo-pulse-speed-v1", String(comboPulseSpeed));
 		    window.blackMazeComboPulseMaxScale = comboPulseMaxScale;
