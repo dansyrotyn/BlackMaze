@@ -2277,6 +2277,11 @@ canvas {
 								<span>Mirror levels</span>
 							</label>
 							<small id="game-menu-mirror-levels-note">Mirrors levels 5 and onward from left to right. Changing this setting reloads the game.</small>
+							<label class="menu-debug-toggle" for="game-menu-modify-victory-sound">
+								<input id="game-menu-modify-victory-sound" type="checkbox">
+								<span>Modify victory sound</span>
+							</label>
+							<small>Raises victory sound pitch by 10% per win; it falls by 2% per second.</small>
 							<label class="menu-debug-toggle" for="game-menu-low-graphics">
 								<input id="game-menu-low-graphics" type="checkbox">
 								<span>Low graphics (better performance)</span>
@@ -2509,6 +2514,12 @@ canvas {
 		    window.blackMazeMirrorLevels = savedMirrorLevels === null ? true : savedMirrorLevels === "true";
 		  } catch (_) {
 		    window.blackMazeMirrorLevels = true;
+		  }
+		  try {
+		    const savedVictorySoundMode = localStorage.getItem("blackmaze-modify-victory-sound-v1");
+		    window.blackMazeModifyVictorySound = savedVictorySoundMode === "true";
+		  } catch (_) {
+		    window.blackMazeModifyVictorySound = false;
 		  }
 		})();
 		</script>
@@ -3104,11 +3115,28 @@ canvas {
 		    if (context.state === "suspended") context.resume().then(playImpact).catch(() => {});
 		    else playImpact();
 		  };
+		  window.blackMazeVictoryPitchPercent = 0;
+		  let victoryPitchUpdatedAt = Date.now();
+		  const decayBlackMazeVictoryPitch = () => {
+		    const now = Date.now();
+		    const elapsedSeconds = Math.max(0, now - victoryPitchUpdatedAt) / 1000;
+		    victoryPitchUpdatedAt = now;
+		    if (window.blackMazeVictoryPitchPercent > 0 && elapsedSeconds > 0) {
+		      window.blackMazeVictoryPitchPercent = Math.max(0, window.blackMazeVictoryPitchPercent - elapsedSeconds * 2);
+		    }
+		  };
+		  window.setInterval(decayBlackMazeVictoryPitch, 250);
 		  window.playBlackMazeLevelFinishedSound = () => {
 		    if (window.app && window.app.main && window.app.main.soundEnabled === false) return;
 		    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 		    if (!AudioContextClass) return;
 		    const context = window.blackMazeAudioContext || (window.blackMazeAudioContext = new AudioContextClass());
+		    decayBlackMazeVictoryPitch();
+		    let pitchMultiplier = 1;
+		    if (window.blackMazeModifyVictorySound) {
+		      window.blackMazeVictoryPitchPercent = (Number(window.blackMazeVictoryPitchPercent) || 0) + 10;
+		      pitchMultiplier += window.blackMazeVictoryPitchPercent / 100;
+		    }
 		    const variant = Number(localStorage.getItem("blackmaze-finish-sound-v1")) || 1;
 		    const motifs = {
 		      1: { type: "sine", step: 0.105, duration: 0.32, notes: [523, 659, 784, 1047] },
@@ -3127,7 +3155,7 @@ canvas {
 		      type: motif.type
 		    }));
 		    if (variant === 5) events.push({ frequency: 659, endFrequency: 650, delay: 0, duration: 0.48, volume: 0.045, type: "triangle" });
-		    const playFanfare = () => playTonePattern(context, events);
+		    const playFanfare = () => playTonePattern(context, events, pitchMultiplier);
 		    if (context.state === "suspended") context.resume().then(playFanfare).catch(() => {});
 		    else playFanfare();
 		  };
@@ -3275,6 +3303,13 @@ canvas {
 		    window.blackMazeMirrorLevels = mirrorLevelsInput.checked;
 		    try { localStorage.setItem(mirrorLevelsStorageKey, String(window.blackMazeMirrorLevels)); } catch (_) {}
 		    window.location.reload();
+		  });
+		  const modifyVictorySoundInput = document.getElementById("game-menu-modify-victory-sound");
+		  const modifyVictorySoundStorageKey = "blackmaze-modify-victory-sound-v1";
+		  modifyVictorySoundInput.checked = window.blackMazeModifyVictorySound !== false;
+		  modifyVictorySoundInput.addEventListener("change", () => {
+		    window.blackMazeModifyVictorySound = modifyVictorySoundInput.checked;
+		    try { localStorage.setItem(modifyVictorySoundStorageKey, String(window.blackMazeModifyVictorySound)); } catch (_) {}
 		  });
 		  const lowGraphicsInput = document.getElementById("game-menu-low-graphics");
 		  const graphicsNote = document.getElementById("game-menu-graphics-note");
