@@ -1970,6 +1970,26 @@ canvas {
   font-size: 3.5vmin;
 }
 #game-menu-panel[hidden] { display: none; }
+#game-menu-panel .menu-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1vmin;
+}
+#game-menu-panel .menu-tabs button {
+  padding: 1.4vmin 1vmin;
+  background: #dedede;
+  color: #333;
+  font-size: 3vmin;
+}
+#game-menu-panel .menu-tabs button[aria-selected="true"] {
+  background: #333;
+  color: #fff;
+}
+#game-menu-panel .menu-tab-content {
+  display: grid;
+  gap: 2.2vmin;
+}
+#game-menu-panel .menu-tab-content[hidden] { display: none; }
 #game-menu-panel label { display: grid; gap: 0.7vmin; }
 #game-menu-panel input {
   width: 100%;
@@ -2056,55 +2076,63 @@ canvas {
 				<div id="game-menu">
 					<button id="game-menu-toggle" type="button" aria-expanded="false" aria-controls="game-menu-panel">MENU</button>
 					<div id="game-menu-panel" hidden>
-						<label for="game-menu-coins">Gold coins</label>
-						<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
-						<label for="game-menu-level">Current level (1–330)</label>
-						<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
-						<label for="game-menu-vertical-fit">Vertical fit (higher = smaller maze)</label>
-						<input id="game-menu-vertical-fit" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
-						<label for="game-menu-combo-fall">Combo fall (% per second)</label>
-						<input id="game-menu-combo-fall" type="number" min="0" max="100" step="0.1" inputmode="decimal">
-						<label for="game-menu-combo-hold">Combo hold after painting a new cell (seconds)</label>
-						<input id="game-menu-combo-hold" type="number" min="0" max="60" step="0.1" inputmode="decimal">
-						<label for="game-menu-combo-pulse-scale">HEAT pulse maximum scale</label>
-						<input id="game-menu-combo-pulse-scale" type="number" min="1" max="3" step="0.05" inputmode="decimal">
-						<label for="game-menu-combo-pulse-speed">HEAT pulse speed (cycles per second)</label>
-						<input id="game-menu-combo-pulse-speed" type="number" min="0.1" max="5" step="0.1" inputmode="decimal">
-						<label for="game-menu-coin-pitch-gain">Coin sound pitch added per coin (%)</label>
-						<input id="game-menu-coin-pitch-gain" type="number" min="0" max="200" step="1" inputmode="numeric">
-						<label for="game-menu-coin-pitch-fall">Coin sound pitch fall (% per second)</label>
-						<input id="game-menu-coin-pitch-fall" type="number" min="0" max="100" step="0.1" inputmode="decimal">
-						<div id="game-menu-sound-settings" hidden>
-						<label for="game-menu-wall-sound">Wall-hit sound</label>
-						<select id="game-menu-wall-sound">
-							<option value="1">1 — Soft knock</option>
-							<option value="2">2 — Low thump</option>
-							<option value="3">3 — Sharp tap</option>
-							<option value="4">4 — Double knock</option>
-							<option value="5">5 — Metallic tick</option>
-						</select>
-						<label for="game-menu-finish-sound">Level-finished sound</label>
-						<select id="game-menu-finish-sound">
-							<option value="1">1 — Bright fanfare</option>
-							<option value="2">2 — Warm arpeggio</option>
-							<option value="3">3 — High chimes</option>
-							<option value="4">4 — Falling bells</option>
-							<option value="5">5 — Victory chord</option>
-						</select>
+						<div class="menu-tabs" role="tablist" aria-label="Game menu sections">
+							<button id="game-menu-tab-progression" type="button" role="tab" aria-selected="true" aria-controls="game-menu-progression">Progression</button>
+							<button id="game-menu-tab-settings" type="button" role="tab" aria-selected="false" aria-controls="game-menu-settings" tabindex="-1">Settings</button>
 						</div>
-						<label for="game-menu-coin-sound">Gold coin sound</label>
-						<select id="game-menu-coin-sound">
-						  <option value="1">1 — Bright chime</option>
-						  <option value="2">2 — Double clink</option>
-						  <option value="3">3 — Low coin</option>
-						  <option value="4">4 — Sparkle</option>
-						  <option value="5">5 — Soft plink</option>
-						  <option value="6">6 — Bell drop</option>
-						  <option value="7">7 — Glassy pluck</option>
-						  <option value="8">8 — Golden trill</option>
-						  <option value="9">9 — Tiny fanfare</option>
-						  <option value="10">10 — Falling sparkle</option>
-						</select>
+						<div id="game-menu-progression" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-progression">
+							<label for="game-menu-coins">Gold coins</label>
+							<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
+							<label for="game-menu-level">Current level (1–330)</label>
+							<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
+						</div>
+						<div id="game-menu-settings" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-settings" hidden>
+							<label for="game-menu-vertical-fit">Vertical fit (higher = smaller maze)</label>
+							<input id="game-menu-vertical-fit" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
+							<label for="game-menu-combo-fall">Combo fall (% per second)</label>
+							<input id="game-menu-combo-fall" type="number" min="0" max="100" step="0.1" inputmode="decimal">
+							<label for="game-menu-combo-hold">Combo hold after painting a new cell (seconds)</label>
+							<input id="game-menu-combo-hold" type="number" min="0" max="60" step="0.1" inputmode="decimal">
+							<label for="game-menu-combo-pulse-scale">HEAT pulse maximum scale</label>
+							<input id="game-menu-combo-pulse-scale" type="number" min="1" max="3" step="0.05" inputmode="decimal">
+							<label for="game-menu-combo-pulse-speed">HEAT pulse speed (cycles per second)</label>
+							<input id="game-menu-combo-pulse-speed" type="number" min="0.1" max="5" step="0.1" inputmode="decimal">
+							<label for="game-menu-coin-pitch-gain">Coin sound pitch added per coin (%)</label>
+							<input id="game-menu-coin-pitch-gain" type="number" min="0" max="200" step="1" inputmode="numeric">
+							<label for="game-menu-coin-pitch-fall">Coin sound pitch fall (% per second)</label>
+							<input id="game-menu-coin-pitch-fall" type="number" min="0" max="100" step="0.1" inputmode="decimal">
+							<div id="game-menu-sound-settings" hidden>
+								<label for="game-menu-wall-sound">Wall-hit sound</label>
+								<select id="game-menu-wall-sound">
+									<option value="1">1 — Soft knock</option>
+									<option value="2">2 — Low thump</option>
+									<option value="3">3 — Sharp tap</option>
+									<option value="4">4 — Double knock</option>
+									<option value="5">5 — Metallic tick</option>
+								</select>
+								<label for="game-menu-finish-sound">Level-finished sound</label>
+								<select id="game-menu-finish-sound">
+									<option value="1">1 — Bright fanfare</option>
+									<option value="2">2 — Warm arpeggio</option>
+									<option value="3">3 — High chimes</option>
+									<option value="4">4 — Falling bells</option>
+									<option value="5">5 — Victory chord</option>
+								</select>
+							</div>
+							<label for="game-menu-coin-sound">Gold coin sound</label>
+							<select id="game-menu-coin-sound">
+								<option value="1">1 — Bright chime</option>
+								<option value="2">2 — Double clink</option>
+								<option value="3">3 — Low coin</option>
+								<option value="4">4 — Sparkle</option>
+								<option value="5">5 — Soft plink</option>
+								<option value="6">6 — Bell drop</option>
+								<option value="7">7 — Glassy pluck</option>
+								<option value="8">8 — Golden trill</option>
+								<option value="9">9 — Tiny fanfare</option>
+								<option value="10">10 — Falling sparkle</option>
+							</select>
+						</div>
 						<div class="menu-actions">
 							<button id="game-menu-apply" type="button">SAVE</button>
 							<button id="game-menu-reset" type="button">RESET PROGRESS</button>
@@ -2563,6 +2591,31 @@ canvas {
 		  const toggle = document.getElementById("game-menu-toggle");
 		  const levelLabel = document.getElementById("level-text");
 		  const panel = document.getElementById("game-menu-panel");
+		  const progressionTab = document.getElementById("game-menu-tab-progression");
+		  const settingsTab = document.getElementById("game-menu-tab-settings");
+		  const progressionPanel = document.getElementById("game-menu-progression");
+		  const settingsPanel = document.getElementById("game-menu-settings");
+		  const menuTabKey = "blackmaze-menu-tab-v1";
+		  const selectMenuTab = tabName => {
+		    const showProgression = tabName !== "settings";
+		    progressionTab.setAttribute("aria-selected", String(showProgression));
+		    settingsTab.setAttribute("aria-selected", String(!showProgression));
+		    progressionTab.tabIndex = showProgression ? 0 : -1;
+		    settingsTab.tabIndex = showProgression ? -1 : 0;
+		    progressionPanel.hidden = !showProgression;
+		    settingsPanel.hidden = showProgression;
+		    try { localStorage.setItem(menuTabKey, showProgression ? "progression" : "settings"); } catch (_) {}
+		  };
+		  selectMenuTab(localStorage.getItem(menuTabKey));
+		  progressionTab.addEventListener("click", () => selectMenuTab("progression"));
+		  settingsTab.addEventListener("click", () => selectMenuTab("settings"));
+		  [progressionTab, settingsTab].forEach(tab => tab.addEventListener("keydown", event => {
+		    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+		    event.preventDefault();
+		    const nextTab = tab === progressionTab ? settingsTab : progressionTab;
+		    selectMenuTab(nextTab === settingsTab ? "settings" : "progression");
+		    nextTab.focus();
+		  }));
 		  const menuScrollKey = "blackmaze-menu-scroll-v1";
 		  const savedMenuScroll = Number(localStorage.getItem(menuScrollKey));
 		  let menuScrollPosition = Number.isFinite(savedMenuScroll) && savedMenuScroll >= 0 ? savedMenuScroll : 0;
