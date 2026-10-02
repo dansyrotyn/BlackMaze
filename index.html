@@ -2081,6 +2081,18 @@ canvas {
   font: inherit;
   font-size: 3.5vmin;
 }
+#game-menu-panel .menu-debug-toggle {
+  display: flex;
+  align-items: center;
+  gap: 1.5vmin;
+}
+#game-menu-panel .menu-debug-toggle input {
+  width: 4vmin;
+  height: 4vmin;
+  margin: 0;
+  accent-color: #ffca28;
+  flex: 0 0 auto;
+}
 #game-menu-panel .menu-actions { display: flex; flex-direction: column; gap: 1.5vmin; }
 #game-menu-panel .menu-actions button { width: 100%; font-size: 3.5vmin; padding: 1.5vmin; }
 #game-menu-reset { background: #a72a2a !important; }
@@ -2169,9 +2181,13 @@ canvas {
 							<label for="game-menu-coins">Gold coins</label>
 			<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
 							<label for="game-menu-level">Current level (1–330)</label>
-							<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
+			<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
 						</div>
 						<div id="game-menu-settings" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-settings" hidden>
+							<label class="menu-debug-toggle" for="game-menu-skin-debug-visuals">
+								<input id="game-menu-skin-debug-visuals" type="checkbox">
+								<span>Show locked skin visuals (debug)</span>
+							</label>
 							<label for="game-menu-vertical-fit">Vertical fit (higher = smaller maze)</label>
 							<input id="game-menu-vertical-fit" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
 							<label for="game-menu-combo-fall">Combo fall (% per second)</label>
@@ -2975,6 +2991,14 @@ canvas {
 		  const wallSoundSelect = document.getElementById("game-menu-wall-sound");
 		  const finishSoundSelect = document.getElementById("game-menu-finish-sound");
 		  const coinSoundSelect = document.getElementById("game-menu-coin-sound");
+		  const skinDebugVisualsInput = document.getElementById("game-menu-skin-debug-visuals");
+		  const skinDebugVisualsStorageKey = "blackmaze-skin-debug-visuals-v1";
+		  window.blackMazeShowLockedSkinVisuals = localStorage.getItem(skinDebugVisualsStorageKey) === "true";
+		  skinDebugVisualsInput.checked = window.blackMazeShowLockedSkinVisuals;
+		  skinDebugVisualsInput.addEventListener("change", () => {
+		    window.blackMazeShowLockedSkinVisuals = skinDebugVisualsInput.checked;
+		    localStorage.setItem(skinDebugVisualsStorageKey, String(window.blackMazeShowLockedSkinVisuals));
+		  });
 		  const progress = window.blackMazeSavedProgress || {};
 		  const modeLevel = Number(progress.gameSaveData && progress.gameSaveData["0_lev"]);
 		  coinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
