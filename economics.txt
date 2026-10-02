@@ -1,0 +1,9 @@
+coin_base_value = 1;
+maze_reward_base_value = 100;
+coin_collection_reward = coin_base_value * ball_lvl;
+maze_completion_reward = maze_reward_base_value * maze_lvl;
+
+ball_power_upgrade_price = pow(2, lvl) * 100;
+heat_power_upgrade_price = pow(14, lvl) * 10;
+maze_power_upgrade_price = pow(4, lvl) * 100;
+coin_power_upgrade_price = pow(10, lvl) * 10;

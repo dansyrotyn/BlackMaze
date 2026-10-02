@@ -2217,6 +2217,9 @@ canvas {
 								<option value="9">9 — Tiny fanfare</option>
 								<option value="10">10 — Falling sparkle</option>
 							</select>
+							<button id="game-menu-economics-import" type="button">LOAD ECONOMICS.TXT</button>
+							<input id="game-menu-economics-file" type="file" accept=".txt,text/plain" hidden>
+							<div id="game-menu-economics-status" role="status" aria-live="polite"></div>
 						</div>
 						<div class="menu-actions">
 							<button id="game-menu-apply" type="button">SAVE</button>
@@ -2236,7 +2239,7 @@ canvas {
 						<button class="idle-power-upgrade" id="idle-power-upgrade-heat" type="button">1 ₿</button>
 					</div>
 					<div class="idle-power-widget" data-idle-power="finish">
-						<div class="idle-power-label" id="idle-power-label-finish">FINISH 1</div>
+						<div class="idle-power-label" id="idle-power-label-finish">MAZE 1</div>
 						<button class="idle-power-upgrade" id="idle-power-upgrade-finish" type="button">1 ₿</button>
 					</div>
 					<div class="idle-power-widget" data-idle-power="coin">
@@ -2396,8 +2399,96 @@ canvas {
 		  const coinCount = document.getElementById("coin-count");
 		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
 		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
-		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Finish", coin: "Coin" };
-		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "FINISH", coin: "COIN" };
+		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Maze", coin: "Coin" };
+		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "MAZE", coin: "COIN" };
+		  const ECONOMICS = {
+		    coin_base_value: 1,
+		    maze_reward_base_value: 100,
+		    upgrade_prices: {
+		      ball: { base: 2, multiplier: 100 },
+		      finish: { base: 4, multiplier: 100 },
+		      heat: { base: 14, multiplier: 10 },
+		      coin: { base: 10, multiplier: 10 }
+		    }
+		  };
+		  const economicsSourceStorageKey = "blackmaze-economics-source-v2";
+		  const applyEconomicsText = source => {
+		    const readValue = name => {
+		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
+		      return match ? Number(match[1]) : null;
+		    };
+		    const coinBaseValue = readValue("coin_base_value");
+		    const mazeRewardBaseValue = readValue("maze_reward_base_value");
+		    if (!Number.isFinite(coinBaseValue) || coinBaseValue < 0 || !Number.isFinite(mazeRewardBaseValue) || mazeRewardBaseValue < 0) return false;
+		    const formulaNames = {
+		      ball_power_upgrade_price: "ball",
+		      maze_power_upgrade_price: "finish",
+		      heat_power_upgrade_price: "heat",
+		      coin_power_upgrade_price: "coin"
+		    };
+		    const nextUpgradePrices = {};
+		    for (const [name, key] of Object.entries(formulaNames)) {
+		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*pow\\(\\s*(\\d+(?:\\.\\d+)?)\\s*,\\s*lvl\\s*\\)\\s*\\*\\s*(\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
+		      if (!match) return false;
+		      const base = Number(match[1]);
+		      const multiplier = Number(match[2]);
+		      if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(multiplier) || multiplier < 0) return false;
+		      nextUpgradePrices[key] = { base, multiplier };
+		    }
+		    ECONOMICS.coin_base_value = coinBaseValue;
+		    ECONOMICS.maze_reward_base_value = mazeRewardBaseValue;
+		    ECONOMICS.upgrade_prices = nextUpgradePrices;
+		    if (typeof window.renderBlackMazeIdleProgress === "function") window.renderBlackMazeIdleProgress();
+		    return true;
+		  };
+		  const loadEconomicsFromTextFile = async () => {
+		    if (/^https?:$/.test(window.location.protocol)) {
+		      try {
+		        const response = await fetch(new URL("economics.txt", window.location.href), { cache: "no-store" });
+		        if (response.ok && applyEconomicsText(await response.text())) {
+		          economicsImportStatus.textContent = "Loaded economics.txt.";
+		          return;
+		        }
+		      } catch (_) {}
+		      economicsImportStatus.textContent = "Using built-in economics values.";
+		      return;
+		    }
+		    try {
+		      const savedSource = localStorage.getItem(economicsSourceStorageKey);
+		      if (savedSource && applyEconomicsText(savedSource)) {
+		        economicsImportStatus.textContent = "Loaded saved economics settings.";
+		        return;
+		      }
+		    } catch (_) {}
+		    economicsImportStatus.textContent = "Using built-in values. Load economics.txt to import changes.";
+		  };
+		  const economicsFileInput = document.getElementById("game-menu-economics-file");
+		  const economicsImportButton = document.getElementById("game-menu-economics-import");
+		  const economicsImportStatus = document.getElementById("game-menu-economics-status");
+		  economicsImportButton.addEventListener("click", () => economicsFileInput.click());
+		  economicsFileInput.addEventListener("change", async () => {
+		    const file = economicsFileInput.files && economicsFileInput.files[0];
+		    if (!file) return;
+		    try {
+		      const source = await file.text();
+		      if (!applyEconomicsText(source)) {
+		        economicsImportStatus.textContent = "Invalid economics file. Check all values and formulas.";
+		        economicsFileInput.value = "";
+		        return;
+		      }
+		      localStorage.setItem(economicsSourceStorageKey, source);
+		      economicsImportStatus.textContent = "Economics loaded.";
+		    } catch (_) {
+		      economicsImportStatus.textContent = "Could not read economics file.";
+		    }
+		    economicsFileInput.value = "";
+		  });
+		  const getIdlePowerUpgradePrice = (key, level) => {
+		    const formula = ECONOMICS.upgrade_prices[key];
+		    return Math.pow(formula.base, level) * formula.multiplier;
+		  };
+		  const getCoinCollectionReward = () => ECONOMICS.coin_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.ball) || 1);
+		  const getMazeCompletionReward = () => ECONOMICS.maze_reward_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.finish) || 1);
 		  const savedIdlePowers = window.blackMazeSavedProgress.idlePowers && typeof window.blackMazeSavedProgress.idlePowers === "object"
 		    ? window.blackMazeSavedProgress.idlePowers : {};
 		  window.blackMazeIdlePowerLevels = Object.fromEntries(IDLE_POWER_KEYS.map(key => {
@@ -2408,7 +2499,7 @@ canvas {
 		  window.renderBlackMazeIdleProgress = () => {
 		    for (const key of IDLE_POWER_KEYS) {
 		      const level = window.blackMazeIdlePowerLevels[key];
-		      const price = level * level;
+		      const price = getIdlePowerUpgradePrice(key, level);
 		      const levelLabel = document.getElementById(`idle-power-label-${key}`);
 		      const upgradeButton = document.getElementById(`idle-power-upgrade-${key}`);
 		      if (levelLabel) levelLabel.textContent = `${IDLE_POWER_LABELS[key]} ${level}`;
@@ -2425,7 +2516,7 @@ canvas {
 		    if (!upgradeButton) continue;
 		    upgradeButton.addEventListener("click", () => {
 		      const level = window.blackMazeIdlePowerLevels[key];
-		      const price = level * level;
+		      const price = getIdlePowerUpgradePrice(key, level);
 		      if (!Number.isSafeInteger(price) || window.blackMazeCoinCount < price) return;
 		      window.blackMazeCoinCount -= price;
 		      window.blackMazeIdlePowerLevels[key] = level + 1;
@@ -2437,6 +2528,7 @@ canvas {
 		    });
 		  }
 		  window.renderBlackMazeIdleProgress();
+		  loadEconomicsFromTextFile();
 		  const comboMeter = document.getElementById("combo-meter");
 		  const comboMeterFill = document.getElementById("combo-meter-fill");
 		  const comboMeterLabel = document.getElementById("combo-meter-label");
@@ -2568,24 +2660,64 @@ canvas {
 		    window.blackMazeComboPercent = Math.min(100, (Number(window.blackMazeComboPercent) || 0) + 1);
 		    updateComboMeter();
 		  };
-		  window.showBlackMazeCoinFloat = (ndcX, ndcY) => {
+		  window.showBlackMazeCoinFloat = (ndcX, ndcY, reward = getCoinCollectionReward()) => {
 		    const x = Number.isFinite(Number(ndcX)) ? (Number(ndcX) + 1) * 0.5 * window.innerWidth : window.innerWidth * 0.5;
 		    const y = Number.isFinite(Number(ndcY)) ? (1 - Number(ndcY)) * 0.5 * window.innerHeight : window.innerHeight * 0.5;
+		    const comboHeat = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0)) / 100;
+		    const coinColor = `rgb(255, ${Math.round(224 - 176 * comboHeat)}, ${Math.round(106 - 58 * comboHeat)})`;
 		    const label = document.createElement("div");
 		    label.className = "coin-collect-float";
 		    label.setAttribute("aria-hidden", "true");
-		    label.textContent = "+1 ₿";
+		    label.textContent = `+${reward} ₿`;
+		    label.style.color = coinColor;
+		    label.style.textShadow = `0 0 0.8vmin ${coinColor}, 0 0.35vmin 0.8vmin rgba(0, 0, 0, 0.8)`;
 		    label.style.left = `${x}px`;
 		    label.style.top = `${y}px`;
 		    document.body.appendChild(label);
 		    label.addEventListener("animationend", () => label.remove(), { once: true });
 		    setTimeout(() => label.remove(), 1200);
 		  };
-		  window.collectBlackMazeCoin = (ballNdcX, ballNdcY) => {
-		    window.showBlackMazeCoinFloat(ballNdcX, ballNdcY);
-		    window.blackMazeCoinCount += 1;
+		  let victoryRewardedForCurrentMaze = false;
+		  window.resetBlackMazeVictoryReward = () => { victoryRewardedForCurrentMaze = false; };
+		  window.showBlackMazeVictoryFloat = (reward = getMazeCompletionReward()) => {
+		    const rewardColor = "#ffe06a";
+		    const label = document.createElement("div");
+		    label.className = "coin-collect-float";
+		    label.setAttribute("aria-hidden", "true");
+		    label.textContent = `Reward!\n+${reward} ₿`;
+		    label.style.whiteSpace = "pre-line";
+		    label.style.textAlign = "center";
+		    label.style.fontSize = "clamp(20px, 5.2vmin, 40px)";
+		    label.style.animationDuration = "1800ms";
+		    label.style.color = rewardColor;
+		    label.style.textShadow = `0 0 0.8vmin ${rewardColor}, 0 0.35vmin 0.8vmin rgba(0, 0, 0, 0.8)`;
+		    label.style.left = "50vw";
+		    label.style.top = "50vh";
+		    document.body.appendChild(label);
+		    label.addEventListener("animationend", () => label.remove(), { once: true });
+		    setTimeout(() => label.remove(), 2400);
+		  };
+		  window.awardBlackMazeVictoryReward = (ndcX, ndcY) => {
+		    if (victoryRewardedForCurrentMaze) return;
+		    victoryRewardedForCurrentMaze = true;
+		    const reward = getMazeCompletionReward();
+		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, window.blackMazeCoinCount + reward);
 		    const count = document.getElementById("coin-count");
 		    if (count) count.textContent = String(window.blackMazeCoinCount);
+		    const menuCoinsInput = document.getElementById("game-menu-coins");
+		    if (menuCoinsInput) menuCoinsInput.value = String(window.blackMazeCoinCount);
+		    window.renderBlackMazeIdleProgress();
+		    window.showBlackMazeVictoryFloat(reward);
+		    window.saveBlackMazeProgress();
+		  };
+		  window.collectBlackMazeCoin = (ballNdcX, ballNdcY) => {
+		    const reward = getCoinCollectionReward();
+		    window.showBlackMazeCoinFloat(ballNdcX, ballNdcY, reward);
+		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, window.blackMazeCoinCount + reward);
+		    const count = document.getElementById("coin-count");
+		    if (count) count.textContent = String(window.blackMazeCoinCount);
+		    const menuCoinsInput = document.getElementById("game-menu-coins");
+		    if (menuCoinsInput) menuCoinsInput.value = String(window.blackMazeCoinCount);
 		    window.renderBlackMazeIdleProgress();
 		    decayCoinSoundPitch();
 		    const coinPitchGain = Math.max(0, Number(window.blackMazeCoinPitchGainPerCoin) || 0);
