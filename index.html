@@ -2040,6 +2040,21 @@ canvas {
   font-size: 5vmin;
   font-weight: 700;
 }
+#heat-score-label {
+  display: none;
+  position: fixed;
+  top: 12.1vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-family: var(--game-font);
+  font-size: clamp(9px, 2.4vmin, 18px);
+  line-height: 1;
+  white-space: nowrap;
+  text-align: center;
+  z-index: 30;
+  pointer-events: none;
+}
 @media screen and (orientation: landscape) {
   #level-text {
     top: 1.5vmin !important;
@@ -2140,6 +2155,7 @@ canvas {
 					</div>
 				</div>
 				<div id="level-text" role="button" tabindex="0" aria-controls="game-menu-panel" aria-expanded="false" title="Open game menu"></div>
+				<div id="heat-score-label" aria-label="Heat score">🔥 HEAT SCORE 0</div>
 				<div id="limit-moves-container">
 					<div id="limit-text"></div>
 					<div id="limit-number-text"></div>
@@ -2281,6 +2297,14 @@ canvas {
 		    ? window.blackMazeSavedProgress.coins : 0;
 		  window.blackMazeBallSkin = Number.isInteger(window.blackMazeSavedProgress.ball) && window.blackMazeSavedProgress.ball >= 0
 		    ? window.blackMazeSavedProgress.ball : 0;
+		  const HEAT_SCORE_ENABLED = false;
+		  const savedHeatScore = Number(window.blackMazeSavedProgress.heatScore);
+		  window.blackMazeHeatScore = Number.isFinite(savedHeatScore) && savedHeatScore >= 0 ? savedHeatScore : 0;
+		  const heatScoreLabel = document.getElementById("heat-score-label");
+		  const renderHeatScore = () => {
+		    if (HEAT_SCORE_ENABLED && heatScoreLabel) heatScoreLabel.textContent = `🔥 HEAT SCORE ${Math.floor(window.blackMazeHeatScore).toLocaleString()}`;
+		  };
+		  renderHeatScore();
 		  const coinCount = document.getElementById("coin-count");
 		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
 		  const comboMeter = document.getElementById("combo-meter");
@@ -2376,9 +2400,25 @@ canvas {
 		    const scale = 1 + (maxScale - 1) * (combo / 100) * pulse;
 		    comboMeterLabel.style.transform = `scale(${scale})`;
 		  };
+		  let previousHeatScoreUpdateAt = null;
+		  let previousHeatScoreSaveAt = 0;
 		  const updateComboFall = timestamp => {
 		    decayCombo();
-		    updateComboPulse(timestamp);
+		    const now = Number.isFinite(timestamp) ? timestamp : performance.now();
+		    if (previousHeatScoreUpdateAt !== null) {
+		      const elapsedMs = now - previousHeatScoreUpdateAt;
+		      if (HEAT_SCORE_ENABLED && !comboFallPaused && elapsedMs > 0 && elapsedMs <= 1000) {
+		        const comboPower = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
+		        window.blackMazeHeatScore += comboPower * elapsedMs / 1000;
+		      }
+		    }
+		    previousHeatScoreUpdateAt = now;
+		    renderHeatScore();
+		    if (HEAT_SCORE_ENABLED && now - previousHeatScoreSaveAt >= 1000) {
+		      if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
+		      previousHeatScoreSaveAt = now;
+		    }
+		    updateComboPulse(now);
 		    requestAnimationFrame(updateComboFall);
 		  };
 		  requestAnimationFrame(updateComboFall);
@@ -2387,6 +2427,7 @@ canvas {
 		      if (window.blackMazeGameSaveData) window.blackMazeSavedProgress.gameSaveData = window.blackMazeGameSaveData;
 		      window.blackMazeSavedProgress.coins = window.blackMazeCoinCount;
 		      window.blackMazeSavedProgress.ball = window.blackMazeBallSkin;
+		      window.blackMazeSavedProgress.heatScore = window.blackMazeHeatScore;
 		      localStorage.setItem(progressKey, JSON.stringify(window.blackMazeSavedProgress));
 		    } catch (_) {}
 		  };
