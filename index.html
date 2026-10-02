@@ -2167,7 +2167,7 @@ canvas {
 						</div>
 						<div id="game-menu-progression" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-progression">
 							<label for="game-menu-coins">Gold coins</label>
-			<input id="game-menu-coins" type="number" min="0" step="0.01" inputmode="decimal">
+			<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
 							<label for="game-menu-level">Current level (1–330)</label>
 							<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
 						</div>
@@ -2384,7 +2384,7 @@ canvas {
 		    catch (_) { savedProgress = {}; }
 		  }
 		  window.blackMazeSavedProgress = savedProgress && typeof savedProgress === "object" ? savedProgress : {};
-		  const roundCoinAmount = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+		  const roundCoinAmount = value => Math.round(Number(value));
 		  const formatCoinAmount = value => String(roundCoinAmount(value));
 		  const savedCoinCount = Number(window.blackMazeSavedProgress.coins);
 		  window.blackMazeCoinCount = Number.isFinite(savedCoinCount) && savedCoinCount >= 0 && savedCoinCount <= Number.MAX_SAFE_INTEGER
@@ -2407,15 +2407,15 @@ canvas {
 		  const ECONOMICS = {
 		    coin_base_value: 1,
 		    maze_reward_base_value: 100,
-		    heat_max_coef: 10,
+		    heat_max_base_coef: 2.5,
 		    upgrade_prices: {
 		      ball: { base: 2, multiplier: 500 },
-		      finish: { base: 4, multiplier: 100 },
-		      heat: { base: 14, multiplier: 10 },
-		      coin: { base: 10, multiplier: 10 }
+		      finish: { base: 3, multiplier: 150 },
+		      heat: { base: 2, multiplier: 100 },
+		      coin: { base: 10, multiplier: 20 }
 		    }
 		  };
-		  const economicsSourceStorageKey = "blackmaze-economics-source-v3";
+		  const economicsSourceStorageKey = "blackmaze-economics-source-v6";
 		  const applyEconomicsText = source => {
 		    const readValue = name => {
 		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
@@ -2423,9 +2423,9 @@ canvas {
 		    };
 		    const coinBaseValue = readValue("coin_base_value");
 		    const mazeRewardBaseValue = readValue("maze_reward_base_value");
-		    const parsedHeatMaxCoef = readValue("heat_max_coef");
-		    const heatMaxCoef = parsedHeatMaxCoef === null ? ECONOMICS.heat_max_coef : parsedHeatMaxCoef;
-		    if (!Number.isFinite(coinBaseValue) || coinBaseValue < 0 || !Number.isFinite(mazeRewardBaseValue) || mazeRewardBaseValue < 0 || !Number.isFinite(heatMaxCoef) || heatMaxCoef < 1) return false;
+		    const parsedHeatMaxBaseCoef = readValue("heat_max_base_coef");
+		    const heatMaxBaseCoef = parsedHeatMaxBaseCoef === null ? ECONOMICS.heat_max_base_coef : parsedHeatMaxBaseCoef;
+		    if (!Number.isFinite(coinBaseValue) || coinBaseValue < 0 || !Number.isFinite(mazeRewardBaseValue) || mazeRewardBaseValue < 0 || !Number.isFinite(heatMaxBaseCoef) || heatMaxBaseCoef < 1) return false;
 		    const formulaNames = {
 		      ball_power_upgrade_price: "ball",
 		      maze_power_upgrade_price: "finish",
@@ -2443,7 +2443,7 @@ canvas {
 		    }
 		    ECONOMICS.coin_base_value = coinBaseValue;
 		    ECONOMICS.maze_reward_base_value = mazeRewardBaseValue;
-		    ECONOMICS.heat_max_coef = heatMaxCoef;
+		    ECONOMICS.heat_max_base_coef = heatMaxBaseCoef;
 		    ECONOMICS.upgrade_prices = nextUpgradePrices;
 		    if (typeof window.renderBlackMazeIdleProgress === "function") window.renderBlackMazeIdleProgress();
 		    return true;
@@ -2496,7 +2496,9 @@ canvas {
 		  };
 		  const getHeatCoefficient = () => {
 		    const heatPercent = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
-		    return 1 + (ECONOMICS.heat_max_coef - 1) * heatPercent / 100;
+		    const heatPowerLevel = Math.max(1, Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.heat) || 1);
+		    const maximumHeatCoefficient = ECONOMICS.heat_max_base_coef * heatPowerLevel;
+		    return 1 + (maximumHeatCoefficient - 1) * heatPercent / 100;
 		  };
 		  const getCoinCollectionReward = () => roundCoinAmount(ECONOMICS.coin_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.ball) || 1) * getHeatCoefficient());
 		  const getMazeCompletionReward = () => ECONOMICS.maze_reward_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.finish) || 1);
@@ -2917,7 +2919,7 @@ canvas {
 		  
 		(() => {
 		  const progressKey = "blackmaze-progress-v1";
-		  const roundCoinAmount = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+		  const roundCoinAmount = value => Math.round(Number(value));
 		  const formatCoinAmount = value => String(roundCoinAmount(value));
 		  const menu = document.getElementById("game-menu");
 		  const toggle = document.getElementById("game-menu-toggle");
