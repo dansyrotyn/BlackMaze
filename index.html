@@ -1023,11 +1023,10 @@ canvas {
   right: auto;
   transform: translateY(-50%);
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.45vmin;
-  padding: 0.75vmin 1.4vmin;
-  border-radius: 1.8vmin;
+  align-items: center;
+  gap: 1vmin;
+  padding: 0.6vmin 1.4vmin;
+  border-radius: 999px;
   background: rgba(255, 248, 225, 0.94);
   color: #684400;
   font-size: 4.2vmin;
@@ -1035,46 +1034,48 @@ canvas {
   z-index: 12;
 }
 
-#coin-counter-value,
-#painted-tile-counter,
-#ball-move-counter {
+#coin-counter-value {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 1vmin;
 }
 
-#painted-tile-counter {
-  min-height: 5vmin;
-  font-size: 4.2vmin;
-  font-weight: 700;
-}
-
-#ball-move-counter {
-  min-height: 5vmin;
-  font-size: 4.2vmin;
-  font-weight: 700;
-}
-
-#ball-move-icon {
-  width: 5vmin;
-  height: 5vmin;
-  min-width: 5vmin;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 4.2vmin;
+#secondary-counters {
+  position: absolute;
+  top: calc(50% + 3.7vmin);
+  left: 3%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1vmin;
+  padding: 0.4vmin 1.4vmin;
+  border-radius: 1.3vmin;
+  background: rgba(255, 248, 225, 0.78);
+  color: #684400;
   line-height: 1;
+  z-index: 12;
 }
 
+#painted-tile-counter,
+#ball-move-counter {
+  display: grid;
+  grid-template-columns: 5vmin auto;
+  column-gap: 1vmin;
+  align-items: center;
+  justify-content: start;
+  min-height: 3.33vmin;
+  font-size: 2.8vmin;
+  font-weight: 700;
+}
+
+#ball-move-icon,
 #painted-tile-icon {
   width: 5vmin;
-  height: 5vmin;
-  min-width: 5vmin;
+  height: 3.33vmin;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 4.2vmin;
+  font-size: 2.8vmin;
   line-height: 1;
 }
 
@@ -2205,11 +2206,13 @@ canvas {
 				<div id="top-container">
 					<img id="topreset-btn" />
 					<div id="gamemodes-btn"></div>
-					<div id="coin-counter" aria-label="Coins, painted tiles, and ball movements">
+					<div id="coin-counter" aria-label="Coins">
 						<div id="coin-counter-value">
 							<span class="coin-icon" aria-hidden="true">₿</span>
 							<span id="coin-count">0</span>
 						</div>
+					</div>
+					<div id="secondary-counters" aria-label="Lifetime painted tiles and ball movements">
 						<div id="painted-tile-counter" aria-label="Total painted tiles">
 							<span id="painted-tile-icon" aria-hidden="true">🟦</span>
 							<span id="painted-tile-count">0</span>
