@@ -2249,11 +2249,7 @@ canvas {
 		      oscillator.stop(start + duration + 0.01);
 		    });
 		  };
-		  let lastWallSoundAt = 0;
 		  window.playBlackMazeWallSound = () => {
-		    const now = Date.now();
-		    if (now - lastWallSoundAt < 180) return;
-		    lastWallSoundAt = now;
 		    if (window.app && window.app.main && window.app.main.soundEnabled === false) return;
 		    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 		    if (!AudioContextClass) return;
