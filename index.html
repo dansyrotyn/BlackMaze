@@ -2446,17 +2446,17 @@ canvas {
 		  const ECONOMICS = {
 		    coin_base_value: 1,
 		    maze_reward_base_value: 100,
-		    heat_max_base_coef: 10,
+		    heat_max_base_coef: 2,
 		    coin_power_multiplier_coef: 2,
 		    upgrade_prices: {
-		      ball: { base: 3, multiplier: 80 },
-		      finish: { base: 3, multiplier: 150 },
-		      heat: { base: 2, multiplier: 100 },
-		      coin: { base: 5, multiplier: 20 }
+		      ball: { type: "linear", multiplier: 80 },
+		      finish: { type: "power", exponent: 2, multiplier: 100 },
+		      heat: { type: "linear", multiplier: 100 },
+		      coin: { type: "exponential", base: 2, multiplier: 50 }
 		    }
 		  };
 		  window.blackMazeCoinPowerMultiplierCoef = ECONOMICS.coin_power_multiplier_coef;
-		  const economicsSourceStorageKey = "blackmaze-economics-source-v12";
+		  const economicsSourceStorageKey = "blackmaze-economics-source-v16";
 		  const applyEconomicsText = source => {
 		    const readValue = name => {
 		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
@@ -2477,12 +2477,33 @@ canvas {
 		    };
 		    const nextUpgradePrices = {};
 		    for (const [name, key] of Object.entries(formulaNames)) {
-		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*pow\\(\\s*(\\d+(?:\\.\\d+)?)\\s*,\\s*lvl\\s*\\)\\s*\\*\\s*(\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
-		      if (!match) return false;
-		      const base = Number(match[1]);
-		      const multiplier = Number(match[2]);
-		      if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(multiplier) || multiplier < 0) return false;
-		      nextUpgradePrices[key] = { base, multiplier };
+		      const formulaLine = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(.*?)\\s*;?\\s*$`, "m"));
+		      if (!formulaLine) return false;
+		      const expression = formulaLine[1].trim();
+		      let match = expression.match(/^lvl\s*\*\s*(\d+(?:\.\d+)?)$/i);
+		      if (match) {
+		        const multiplier = Number(match[1]);
+		        if (!Number.isFinite(multiplier) || multiplier < 0) return false;
+		        nextUpgradePrices[key] = { type: "linear", multiplier };
+		        continue;
+		      }
+		      match = expression.match(/^pow\(\s*lvl\s*,\s*(\d+(?:\.\d+)?)\s*\)\s*\*\s*(\d+(?:\.\d+)?)$/i);
+		      if (match) {
+		        const exponent = Number(match[1]);
+		        const multiplier = Number(match[2]);
+		        if (!Number.isFinite(exponent) || exponent <= 0 || !Number.isFinite(multiplier) || multiplier < 0) return false;
+		        nextUpgradePrices[key] = { type: "power", exponent, multiplier };
+		        continue;
+		      }
+		      match = expression.match(/^pow\(\s*(\d+(?:\.\d+)?)\s*,\s*lvl\s*\)\s*\*\s*(\d+(?:\.\d+)?)$/i);
+		      if (match) {
+		        const base = Number(match[1]);
+		        const multiplier = Number(match[2]);
+		        if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(multiplier) || multiplier < 0) return false;
+		        nextUpgradePrices[key] = { type: "exponential", base, multiplier };
+		        continue;
+		      }
+		      return false;
 		    }
 		    ECONOMICS.coin_base_value = coinBaseValue;
 		    ECONOMICS.maze_reward_base_value = mazeRewardBaseValue;
@@ -2537,7 +2558,12 @@ canvas {
 		  });
 		  const getIdlePowerUpgradePrice = (key, level) => {
 		    const formula = ECONOMICS.upgrade_prices[key];
-		    return Math.ceil(Math.pow(formula.base, level) * formula.multiplier);
+		    let price;
+		    if (formula.type === "linear") price = level * formula.multiplier;
+		    else if (formula.type === "power") price = Math.pow(level, formula.exponent) * formula.multiplier;
+		    else if (formula.type === "exponential") price = Math.pow(formula.base, level) * formula.multiplier;
+		    else return NaN;
+		    return Math.ceil(price);
 		  };
 		  const getHeatCoefficient = () => {
 		    const heatPercent = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
@@ -2581,7 +2607,7 @@ canvas {
 		      if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		      const menuCoinsInput = document.getElementById("game-menu-coins");
 		      if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
-		      if (key === "ball" && typeof window.blackMazeSelectSkinForBallPowerLevel === "function") {
+		      if (key === "ball" && level + 1 === 2 && typeof window.blackMazeSelectSkinForBallPowerLevel === "function") {
 		        window.blackMazeSelectSkinForBallPowerLevel(level + 1);
 		      }
 		      window.renderBlackMazeIdleProgress();
