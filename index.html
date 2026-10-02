@@ -1931,6 +1931,57 @@ canvas {
 /* Minimal play-only HUD adjustments */
 #gamemodes-btn,
 #gamemodes-container { display: none !important; }
+#idle-progression {
+  position: fixed;
+  left: 50%;
+  bottom: 1.4vmin;
+  transform: translateX(-50%);
+  width: min(98vw, 1200px);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1vmin;
+  z-index: 45;
+}
+.idle-power-widget {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.8vmin;
+  box-sizing: border-box;
+  padding: 1.3vmin 0.8vmin;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 1.4vmin;
+  background: rgba(22, 22, 24, 0.86);
+  color: #fff;
+  text-align: center;
+  font-family: var(--game-font);
+}
+.idle-power-label {
+  color: #ffd35b;
+  font-size: clamp(8px, 2.1vmin, 15px);
+  line-height: 1;
+  white-space: nowrap;
+}
+.idle-power-upgrade {
+  width: 82%;
+  min-height: 3.8vmin;
+  padding: 0.6vmin 0.3vmin;
+  border: 0;
+  border-radius: 0.8vmin;
+  background: #e4a928;
+  color: #241b08;
+  font-family: var(--game-font);
+  font-size: clamp(9px, 2.4vmin, 16px);
+  line-height: 1.05;
+  cursor: pointer;
+}
+.idle-power-upgrade:disabled {
+  background: #777;
+  color: #ddd;
+  cursor: default;
+  opacity: 0.75;
+}
 #game-menu {
   position: absolute;
   top: 1.5vmin;
@@ -2156,6 +2207,24 @@ canvas {
 				</div>
 				<div id="level-text" role="button" tabindex="0" aria-controls="game-menu-panel" aria-expanded="false" title="Open game menu"></div>
 				<div id="heat-score-label" aria-label="Heat score">🔥 HEAT SCORE 0</div>
+				<div id="idle-progression" role="group" aria-label="Idle power upgrades">
+					<div class="idle-power-widget" data-idle-power="ball">
+						<div class="idle-power-label" id="idle-power-label-ball">Ball. LVL 1</div>
+						<button class="idle-power-upgrade" id="idle-power-upgrade-ball" type="button">NEXT - 1¢</button>
+					</div>
+					<div class="idle-power-widget" data-idle-power="heat">
+						<div class="idle-power-label" id="idle-power-label-heat">Heat. LVL 1</div>
+						<button class="idle-power-upgrade" id="idle-power-upgrade-heat" type="button">NEXT - 1¢</button>
+					</div>
+					<div class="idle-power-widget" data-idle-power="finish">
+						<div class="idle-power-label" id="idle-power-label-finish">Finish. LVL 1</div>
+						<button class="idle-power-upgrade" id="idle-power-upgrade-finish" type="button">NEXT - 1¢</button>
+					</div>
+					<div class="idle-power-widget" data-idle-power="coin">
+						<div class="idle-power-label" id="idle-power-label-coin">Coin. LVL 1</div>
+						<button class="idle-power-upgrade" id="idle-power-upgrade-coin" type="button">NEXT - 1¢</button>
+					</div>
+				</div>
 				<div id="limit-moves-container">
 					<div id="limit-text"></div>
 					<div id="limit-number-text"></div>
@@ -2307,6 +2376,48 @@ canvas {
 		  renderHeatScore();
 		  const coinCount = document.getElementById("coin-count");
 		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
+		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
+		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Finish", coin: "Coin" };
+		  const IDLE_POWER_LABELS = { ball: "Ball.", heat: "Heat.", finish: "Finish.", coin: "Coin." };
+		  const savedIdlePowers = window.blackMazeSavedProgress.idlePowers && typeof window.blackMazeSavedProgress.idlePowers === "object"
+		    ? window.blackMazeSavedProgress.idlePowers : {};
+		  window.blackMazeIdlePowerLevels = Object.fromEntries(IDLE_POWER_KEYS.map(key => {
+		    const savedLevel = key === "finish" && savedIdlePowers.finish === undefined ? savedIdlePowers.victory : savedIdlePowers[key];
+		    const level = Number(savedLevel);
+		    return [key, Number.isSafeInteger(level) && level >= 1 ? level : 1];
+		  }));
+		  window.renderBlackMazeIdleProgress = () => {
+		    for (const key of IDLE_POWER_KEYS) {
+		      const level = window.blackMazeIdlePowerLevels[key];
+		      const price = level * level;
+		      const levelLabel = document.getElementById(`idle-power-label-${key}`);
+		      const upgradeButton = document.getElementById(`idle-power-upgrade-${key}`);
+		      if (levelLabel) levelLabel.textContent = `${IDLE_POWER_LABELS[key]} LVL ${level}`;
+		      if (upgradeButton) {
+		        const priceIsSafe = Number.isSafeInteger(price);
+		        upgradeButton.textContent = priceIsSafe ? `NEXT - ${price}¢` : "MAX LEVEL";
+		        upgradeButton.disabled = !priceIsSafe || window.blackMazeCoinCount < price;
+		        upgradeButton.setAttribute("aria-label", priceIsSafe ? `Upgrade ${IDLE_POWER_NAMES[key]} for ${price} coins` : `${IDLE_POWER_NAMES[key]} is at maximum level`);
+		      }
+		    }
+		  };
+		  for (const key of IDLE_POWER_KEYS) {
+		    const upgradeButton = document.getElementById(`idle-power-upgrade-${key}`);
+		    if (!upgradeButton) continue;
+		    upgradeButton.addEventListener("click", () => {
+		      const level = window.blackMazeIdlePowerLevels[key];
+		      const price = level * level;
+		      if (!Number.isSafeInteger(price) || window.blackMazeCoinCount < price) return;
+		      window.blackMazeCoinCount -= price;
+		      window.blackMazeIdlePowerLevels[key] = level + 1;
+		      if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
+		      const menuCoinsInput = document.getElementById("game-menu-coins");
+		      if (menuCoinsInput) menuCoinsInput.value = String(window.blackMazeCoinCount);
+		      window.renderBlackMazeIdleProgress();
+		      if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
+		    });
+		  }
+		  window.renderBlackMazeIdleProgress();
 		  const comboMeter = document.getElementById("combo-meter");
 		  const comboMeterFill = document.getElementById("combo-meter-fill");
 		  const comboMeterLabel = document.getElementById("combo-meter-label");
@@ -2427,6 +2538,7 @@ canvas {
 		      if (window.blackMazeGameSaveData) window.blackMazeSavedProgress.gameSaveData = window.blackMazeGameSaveData;
 		      window.blackMazeSavedProgress.coins = window.blackMazeCoinCount;
 		      window.blackMazeSavedProgress.ball = window.blackMazeBallSkin;
+		      window.blackMazeSavedProgress.idlePowers = window.blackMazeIdlePowerLevels;
 		      window.blackMazeSavedProgress.heatScore = window.blackMazeHeatScore;
 		      localStorage.setItem(progressKey, JSON.stringify(window.blackMazeSavedProgress));
 		    } catch (_) {}
@@ -2441,6 +2553,7 @@ canvas {
 		    window.blackMazeCoinCount += 1;
 		    const count = document.getElementById("coin-count");
 		    if (count) count.textContent = String(window.blackMazeCoinCount);
+		    window.renderBlackMazeIdleProgress();
 		    decayCoinSoundPitch();
 		    const coinPitchGain = Math.max(0, Number(window.blackMazeCoinPitchGainPerCoin) || 0);
 		    window.blackMazeCoinPitchPercent = Math.min(COIN_SOUND_PITCH_MAX_PERCENT, (Number(window.blackMazeCoinPitchPercent) || 0) + coinPitchGain);
