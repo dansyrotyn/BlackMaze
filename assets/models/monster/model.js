@@ -108,6 +108,7 @@
       ellipsoid(cream, side * 0.16, -0.327, 0.107, 0.034, 0.022, 0.028);
     });
 
+    model.rotation.order = "YXZ";
     model.rotation.x = -Math.PI / 2;
     model.userData.blackMazeMonsterResources = resources;
     return model;
