@@ -1034,6 +1034,25 @@ canvas {
   z-index: 12;
 }
 
+#combo-meter-label {
+  position: fixed;
+  right: 0.1vmin;
+  bottom: 18.2vmin;
+  width: 8vmin;
+  min-width: 32px;
+  color: hsl(60, 100%, 50%);
+  font-family: var(--game-font);
+  font-size: clamp(10px, 2.2vmin, 22px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-align: center;
+  transform: scale(1);
+  transform-origin: right center;
+  z-index: 35;
+  pointer-events: none;
+}
+
 #combo-meter {
   position: fixed;
   top: 22vmin;
@@ -2015,6 +2034,7 @@ canvas {
 			<div id="combo-meter" role="progressbar" aria-label="Combo bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
 				<div id="combo-meter-fill"></div>
 			</div>
+			<div id="combo-meter-label" aria-hidden="true">HEAT</div>
 			<div id="top-banner">
 				<div id="top-banner-bg"></div>
 				<div id="top-banner-text"></div>
@@ -2046,6 +2066,10 @@ canvas {
 						<input id="game-menu-combo-fall" type="number" min="0" max="100" step="0.1" inputmode="decimal">
 						<label for="game-menu-combo-hold">Combo hold after painting a new cell (seconds)</label>
 						<input id="game-menu-combo-hold" type="number" min="0" max="60" step="0.1" inputmode="decimal">
+						<label for="game-menu-combo-pulse-scale">HEAT pulse maximum scale</label>
+						<input id="game-menu-combo-pulse-scale" type="number" min="1" max="3" step="0.05" inputmode="decimal">
+						<label for="game-menu-combo-pulse-speed">HEAT pulse speed (cycles per second)</label>
+						<input id="game-menu-combo-pulse-speed" type="number" min="0.1" max="5" step="0.1" inputmode="decimal">
 						<label for="game-menu-coin-pitch-gain">Coin sound pitch added per coin (%)</label>
 						<input id="game-menu-coin-pitch-gain" type="number" min="0" max="200" step="1" inputmode="numeric">
 						<label for="game-menu-coin-pitch-fall">Coin sound pitch fall (% per second)</label>
@@ -2233,6 +2257,7 @@ canvas {
 		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
 		  const comboMeter = document.getElementById("combo-meter");
 		  const comboMeterFill = document.getElementById("combo-meter-fill");
+		  const comboMeterLabel = document.getElementById("combo-meter-label");
 		  window.blackMazeComboPercent = 0;
 		  window.readBlackMazeComboSetting = (key, legacyKey) => {
 		    const currentValue = localStorage.getItem(key);
@@ -2243,16 +2268,22 @@ canvas {
 		  };
 		  const savedComboFallRaw = window.readBlackMazeComboSetting("blackmaze-combo-fall-v1", "blackmaze-pitch-fall-v1");
 		  const savedComboFall = Number(savedComboFallRaw);
-		  window.blackMazeComboFallRate = savedComboFallRaw !== null && Number.isFinite(savedComboFall) && savedComboFall >= 0 && savedComboFall <= 100 ? savedComboFall : 1;
+		  window.blackMazeComboFallRate = savedComboFallRaw !== null && Number.isFinite(savedComboFall) && savedComboFall >= 0 && savedComboFall <= 100 ? savedComboFall : 20;
 		  const savedComboHoldRaw = window.readBlackMazeComboSetting("blackmaze-combo-delay-v1", "blackmaze-pitch-delay-v1");
 		  const savedComboHold = Number(savedComboHoldRaw);
-		  window.blackMazeComboHoldSeconds = savedComboHoldRaw !== null && Number.isFinite(savedComboHold) && savedComboHold >= 0 && savedComboHold <= 60 ? savedComboHold : 1;
+		  window.blackMazeComboHoldSeconds = savedComboHoldRaw !== null && Number.isFinite(savedComboHold) && savedComboHold >= 0 && savedComboHold <= 60 ? savedComboHold : 0.2;
+		  const savedComboPulseScaleRaw = localStorage.getItem("blackmaze-combo-pulse-scale-v1");
+		  const savedComboPulseScale = Number(savedComboPulseScaleRaw);
+		  window.blackMazeComboPulseMaxScale = savedComboPulseScaleRaw !== null && Number.isFinite(savedComboPulseScale) && savedComboPulseScale >= 1 && savedComboPulseScale <= 3 ? savedComboPulseScale : 1.5;
+		  const savedComboPulseSpeedRaw = localStorage.getItem("blackmaze-combo-pulse-speed-v1");
+		  const savedComboPulseSpeed = Number(savedComboPulseSpeedRaw);
+		  window.blackMazeComboPulseSpeed = savedComboPulseSpeedRaw !== null && Number.isFinite(savedComboPulseSpeed) && savedComboPulseSpeed >= 0.1 && savedComboPulseSpeed <= 5 ? savedComboPulseSpeed : 1.1;
 		  const savedCoinPitchGainRaw = localStorage.getItem("blackmaze-coin-pitch-gain-v1");
 		  const savedCoinPitchGain = Number(savedCoinPitchGainRaw);
-		  window.blackMazeCoinPitchGainPerCoin = savedCoinPitchGainRaw !== null && Number.isFinite(savedCoinPitchGain) && savedCoinPitchGain >= 0 && savedCoinPitchGain <= 200 ? savedCoinPitchGain : 5;
+		  window.blackMazeCoinPitchGainPerCoin = savedCoinPitchGainRaw !== null && Number.isFinite(savedCoinPitchGain) && savedCoinPitchGain >= 0 && savedCoinPitchGain <= 200 ? savedCoinPitchGain : 10;
 		  const savedCoinPitchFallRaw = localStorage.getItem("blackmaze-coin-pitch-fall-v1");
 		  const savedCoinPitchFall = Number(savedCoinPitchFallRaw);
-		  window.blackMazeCoinPitchFallRate = savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 1;
+		  window.blackMazeCoinPitchFallRate = savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 5;
 		  window.blackMazeCoinPitchPercent = 0;
 		  let coinPitchUpdatedAt = Date.now();
 		  
@@ -2285,7 +2316,9 @@ canvas {
 		    const combo = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
 		    const heatHue = Math.round(30 * (1 - combo / 100));
 		    const heatColor = `hsl(${heatHue}, 100%, 52%)`;
+		    const labelHue = Math.round(30 * (1 - combo / 100));
 		    window.blackMazeComboPercent = combo;
+		    if (comboMeterLabel) comboMeterLabel.style.color = `hsl(${labelHue}, 100%, 50%)`;
 		    if (comboMeterFill) {
 		      comboMeterFill.style.height = `${combo}%`;
 		      comboMeterFill.style.background = `linear-gradient(to top, ${heatColor}, hsl(${heatHue}, 100%, 66%))`;
@@ -2305,8 +2338,19 @@ canvas {
 		      updateComboMeter();
 		    }
 		  };
-		  const updateComboFall = () => {
+		  const updateComboPulse = timestamp => {
+		    if (!comboMeterLabel) return;
+		    const combo = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
+		    const maxScale = Math.max(1, Number(window.blackMazeComboPulseMaxScale) || 1);
+		    const speed = Math.max(0, Number(window.blackMazeComboPulseSpeed) || 0);
+		    const phase = (Number(timestamp) / 1000) * speed * Math.PI * 2;
+		    const pulse = (1 - Math.cos(phase)) / 2;
+		    const scale = 1 + (maxScale - 1) * (combo / 100) * pulse;
+		    comboMeterLabel.style.transform = `scale(${scale})`;
+		  };
+		  const updateComboFall = timestamp => {
 		    decayCombo();
+		    updateComboPulse(timestamp);
 		    requestAnimationFrame(updateComboFall);
 		  };
 		  requestAnimationFrame(updateComboFall);
@@ -2339,7 +2383,7 @@ canvas {
 		    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 		    if (!AudioContextClass) return;
 		    const context = window.blackMazeAudioContext || (window.blackMazeAudioContext = new AudioContextClass());
-		    const variant = Number(localStorage.getItem("blackmaze-coin-sound-v1")) || 4;
+		    const variant = Number(localStorage.getItem("blackmaze-coin-sound-v1")) || 2;
 		    const patterns = {
 		      1: [
 		        { frequency: 880, endFrequency: 860, duration: 0.2, volume: 0.12 },
@@ -2531,6 +2575,8 @@ canvas {
 		  const verticalFitInput = document.getElementById("game-menu-vertical-fit");
 		  const comboFallInput = document.getElementById("game-menu-combo-fall");
 		  const comboHoldInput = document.getElementById("game-menu-combo-hold");
+		  const comboPulseScaleInput = document.getElementById("game-menu-combo-pulse-scale");
+		  const comboPulseSpeedInput = document.getElementById("game-menu-combo-pulse-speed");
 		  const coinPitchGainInput = document.getElementById("game-menu-coin-pitch-gain");
 		  const coinPitchFallInput = document.getElementById("game-menu-coin-pitch-fall");
 		  const wallSoundSelect = document.getElementById("game-menu-wall-sound");
@@ -2547,24 +2593,32 @@ canvas {
 		  window.blackMazeVerticalFitCoefficient = Number(verticalFitInput.value);
 		  const savedComboFallRaw = window.readBlackMazeComboSetting("blackmaze-combo-fall-v1", "blackmaze-pitch-fall-v1");
 		  const savedComboFall = Number(savedComboFallRaw);
-		  comboFallInput.value = String(savedComboFallRaw !== null && Number.isFinite(savedComboFall) && savedComboFall >= 0 && savedComboFall <= 100 ? savedComboFall : 1);
+		  comboFallInput.value = String(savedComboFallRaw !== null && Number.isFinite(savedComboFall) && savedComboFall >= 0 && savedComboFall <= 100 ? savedComboFall : 20);
 		  window.blackMazeComboFallRate = Number(comboFallInput.value);
 		  const savedComboHoldRaw = window.readBlackMazeComboSetting("blackmaze-combo-delay-v1", "blackmaze-pitch-delay-v1");
 		  const savedComboHold = Number(savedComboHoldRaw);
-		  comboHoldInput.value = String(savedComboHoldRaw !== null && Number.isFinite(savedComboHold) && savedComboHold >= 0 && savedComboHold <= 60 ? savedComboHold : 1);
+		  comboHoldInput.value = String(savedComboHoldRaw !== null && Number.isFinite(savedComboHold) && savedComboHold >= 0 && savedComboHold <= 60 ? savedComboHold : 0.2);
 		  window.blackMazeComboHoldSeconds = Number(comboHoldInput.value);
+		  const savedComboPulseScaleRaw = localStorage.getItem("blackmaze-combo-pulse-scale-v1");
+		  const savedComboPulseScale = Number(savedComboPulseScaleRaw);
+		  comboPulseScaleInput.value = String(savedComboPulseScaleRaw !== null && Number.isFinite(savedComboPulseScale) && savedComboPulseScale >= 1 && savedComboPulseScale <= 3 ? savedComboPulseScale : 1.5);
+		  window.blackMazeComboPulseMaxScale = Number(comboPulseScaleInput.value);
+		  const savedComboPulseSpeedRaw = localStorage.getItem("blackmaze-combo-pulse-speed-v1");
+		  const savedComboPulseSpeed = Number(savedComboPulseSpeedRaw);
+		  comboPulseSpeedInput.value = String(savedComboPulseSpeedRaw !== null && Number.isFinite(savedComboPulseSpeed) && savedComboPulseSpeed >= 0.1 && savedComboPulseSpeed <= 5 ? savedComboPulseSpeed : 1.1);
+		  window.blackMazeComboPulseSpeed = Number(comboPulseSpeedInput.value);
 		  const savedCoinPitchGainRaw = localStorage.getItem("blackmaze-coin-pitch-gain-v1");
 		  const savedCoinPitchGain = Number(savedCoinPitchGainRaw);
-		  coinPitchGainInput.value = String(savedCoinPitchGainRaw !== null && Number.isFinite(savedCoinPitchGain) && savedCoinPitchGain >= 0 && savedCoinPitchGain <= 200 ? savedCoinPitchGain : 5);
+		  coinPitchGainInput.value = String(savedCoinPitchGainRaw !== null && Number.isFinite(savedCoinPitchGain) && savedCoinPitchGain >= 0 && savedCoinPitchGain <= 200 ? savedCoinPitchGain : 10);
 		  window.blackMazeCoinPitchGainPerCoin = Number(coinPitchGainInput.value);
 		  const savedCoinPitchFallRaw = localStorage.getItem("blackmaze-coin-pitch-fall-v1");
 		  const savedCoinPitchFall = Number(savedCoinPitchFallRaw);
-		  coinPitchFallInput.value = String(savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 1);
+		  coinPitchFallInput.value = String(savedCoinPitchFallRaw !== null && Number.isFinite(savedCoinPitchFall) && savedCoinPitchFall >= 0 && savedCoinPitchFall <= 100 ? savedCoinPitchFall : 5);
 		  window.blackMazeCoinPitchFallRate = Number(coinPitchFallInput.value);
 		  wallSoundSelect.value = "2";
 		  finishSoundSelect.value = "1";
 		  const savedCoinSound = Number(localStorage.getItem("blackmaze-coin-sound-v1"));
-		  coinSoundSelect.value = String(Number.isInteger(savedCoinSound) && savedCoinSound >= 1 && savedCoinSound <= 10 ? savedCoinSound : 4);
+		  coinSoundSelect.value = String(Number.isInteger(savedCoinSound) && savedCoinSound >= 1 && savedCoinSound <= 10 ? savedCoinSound : 2);
 		  localStorage.setItem("blackmaze-wall-sound-v1", "2");
 		  localStorage.setItem("blackmaze-finish-sound-v1", "1");
 		  if (window.app && window.app.main && typeof window.app.main.resizeNow === "function") window.app.main.resizeNow();
@@ -2597,6 +2651,8 @@ canvas {
 		    const verticalFit = Number(verticalFitInput.value);
 		    const comboFallRate = Number(comboFallInput.value);
 		    const comboHoldSeconds = Number(comboHoldInput.value);
+		    const comboPulseMaxScale = Number(comboPulseScaleInput.value);
+		    const comboPulseSpeed = Number(comboPulseSpeedInput.value);
 		    const coinPitchGain = Number(coinPitchGainInput.value);
 		    const coinPitchFallRate = Number(coinPitchFallInput.value);
 		    if (!Number.isSafeInteger(coins) || coins < 0) {
@@ -2629,6 +2685,18 @@ canvas {
 		      return;
 		    }
 		    comboHoldInput.setCustomValidity("");
+		    if (!Number.isFinite(comboPulseMaxScale) || comboPulseMaxScale < 1 || comboPulseMaxScale > 3) {
+		      comboPulseScaleInput.setCustomValidity("Enter a HEAT pulse maximum scale from 1 to 3.");
+		      comboPulseScaleInput.reportValidity();
+		      return;
+		    }
+		    comboPulseScaleInput.setCustomValidity("");
+		    if (!Number.isFinite(comboPulseSpeed) || comboPulseSpeed < 0.1 || comboPulseSpeed > 5) {
+		      comboPulseSpeedInput.setCustomValidity("Enter a HEAT pulse speed from 0.1 to 5 cycles per second.");
+		      comboPulseSpeedInput.reportValidity();
+		      return;
+		    }
+		    comboPulseSpeedInput.setCustomValidity("");
 		    if (!Number.isFinite(coinPitchGain) || coinPitchGain < 0 || coinPitchGain > 200) {
 		    coinPitchGainInput.setCustomValidity("Enter coin pitch gain from 0 to 200 percent.");
 		    coinPitchGainInput.reportValidity();
@@ -2643,6 +2711,10 @@ canvas {
 		    coinPitchFallInput.setCustomValidity("");
 		    localStorage.setItem("blackmaze-combo-fall-v1", String(comboFallRate));
 		    localStorage.setItem("blackmaze-combo-delay-v1", String(comboHoldSeconds));
+		    localStorage.setItem("blackmaze-combo-pulse-scale-v1", String(comboPulseMaxScale));
+		    localStorage.setItem("blackmaze-combo-pulse-speed-v1", String(comboPulseSpeed));
+		    window.blackMazeComboPulseMaxScale = comboPulseMaxScale;
+		    window.blackMazeComboPulseSpeed = comboPulseSpeed;
 		    localStorage.setItem("blackmaze-coin-pitch-gain-v1", String(coinPitchGain));
 		    localStorage.setItem("blackmaze-coin-pitch-fall-v1", String(coinPitchFallRate));
 		    window.blackMazeCoinPitchFallRate = coinPitchFallRate;
