@@ -2054,9 +2054,22 @@ canvas {
   font-size: 1em;
   line-height: 1;
 }
+.feat-reward-float {
+  animation-name: blackmaze-feat-float;
+}
 @keyframes blackmaze-coin-float {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
   14% { opacity: 1; transform: translate(-50%, calc(-50% - 8px)) scale(1.22); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 72px)) scale(0.95); }
+}
+@keyframes blackmaze-feat-float {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
+  14% { opacity: 1; transform: translate(-50%, calc(-50% - 8px)) scale(1.22); }
+  76% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 54px)) scale(1);
+    animation-timing-function: cubic-bezier(0.42, 0, 1, 1);
+  }
   100% { opacity: 0; transform: translate(-50%, calc(-50% - 72px)) scale(0.95); }
 }
 #game-menu {
@@ -2761,12 +2774,22 @@ canvas {
 		  let comboUpdatedAt = Date.now();
 		  let comboFallPaused = false;
 		  let comboFallPauseUntil = 0;
+		  let comboFallWaitingForNextMove = false;
 		  window.pauseBlackMazeComboFall = () => {
 		    comboFallPaused = true;
+		    comboFallWaitingForNextMove = true;
 		    comboUpdatedAt = Date.now();
 		  };
 		  window.resumeBlackMazeComboFall = () => {
+		    if (comboFallWaitingForNextMove) return;
 		    comboFallPaused = false;
+		    comboUpdatedAt = Date.now();
+		  };
+		  const startComboFallAfterNextMove = () => {
+		    if (!comboFallWaitingForNextMove) return;
+		    comboFallWaitingForNextMove = false;
+		    comboFallPaused = false;
+		    comboFallPauseUntil = Date.now();
 		    comboUpdatedAt = Date.now();
 		  };
 		  window.delayBlackMazeComboFall = (delayMs = 1000) => {
@@ -2854,6 +2877,7 @@ canvas {
 		    updateComboMeter();
 		  };
 		  window.blackMazeBallMoved = () => {
+		    startComboFallAfterNextMove();
 		    window.blackMazeBallMoveCount = Math.min(Number.MAX_SAFE_INTEGER, (Number(window.blackMazeBallMoveCount) || 0) + 1);
 		    if (ballMoveCount) ballMoveCount.textContent = String(window.blackMazeBallMoveCount);
 		    if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
