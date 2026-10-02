@@ -2403,12 +2403,12 @@ canvas {
 		
 		<script>
 		(() => {
-		  const key = "blackmaze-low-graphics-v1";
+		  const key = "blackmaze-low-graphics-v2";
 		  try {
 		    const saved = localStorage.getItem(key);
-		    window.blackMazeLowGraphics = saved === null ? true : saved === "true";
+		    window.blackMazeLowGraphics = saved === null ? false : saved === "true";
 		  } catch (_) {
-		    window.blackMazeLowGraphics = true;
+		    window.blackMazeLowGraphics = false;
 		  }
 		})();
 		</script>
@@ -2607,7 +2607,7 @@ canvas {
 		      if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		      const menuCoinsInput = document.getElementById("game-menu-coins");
 		      if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
-		      if (key === "ball" && level + 1 === 2 && typeof window.blackMazeSelectSkinForBallPowerLevel === "function") {
+		      if (key === "ball" && typeof window.blackMazeSelectSkinForBallPowerLevel === "function") {
 		        window.blackMazeSelectSkinForBallPowerLevel(level + 1);
 		      }
 		      window.renderBlackMazeIdleProgress();
@@ -3053,7 +3053,7 @@ canvas {
 		  });
 		  const lowGraphicsInput = document.getElementById("game-menu-low-graphics");
 		  const graphicsNote = document.getElementById("game-menu-graphics-note");
-		  const lowGraphicsStorageKey = "blackmaze-low-graphics-v1";
+		  const lowGraphicsStorageKey = "blackmaze-low-graphics-v2";
 		  lowGraphicsInput.checked = !!window.blackMazeLowGraphics;
 		  lowGraphicsInput.addEventListener("change", () => {
 		    window.blackMazeLowGraphics = lowGraphicsInput.checked;
