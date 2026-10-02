@@ -1,0 +1,15 @@
+{
+  "resources": [
+    "output.ogg",
+    "output.m4a",
+    "output.mp3",
+    "output.ac3"
+  ],
+  "spritemap": {
+    "level-win": {
+      "start": 0,
+      "end": 6.8285714285714285,
+      "loop": false
+    }
+  }
+}
