@@ -2184,6 +2184,11 @@ canvas {
 			<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
 						</div>
 						<div id="game-menu-settings" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-settings" hidden>
+							<label class="menu-debug-toggle" for="game-menu-low-graphics">
+								<input id="game-menu-low-graphics" type="checkbox">
+								<span>Low graphics (better performance)</span>
+							</label>
+							<small id="game-menu-graphics-note">Turns off antialiasing and shadows and lowers render resolution. Antialiasing changes apply after reload.</small>
 							<label class="menu-debug-toggle" for="game-menu-skin-debug-visuals">
 								<input id="game-menu-skin-debug-visuals" type="checkbox">
 								<span>Show locked skin visuals (debug)</span>
@@ -2396,6 +2401,17 @@ canvas {
 		<!--preloader-end-->
 
 		
+		<script>
+		(() => {
+		  const key = "blackmaze-low-graphics-v1";
+		  try {
+		    const saved = localStorage.getItem(key);
+		    window.blackMazeLowGraphics = saved === null ? true : saved === "true";
+		  } catch (_) {
+		    window.blackMazeLowGraphics = true;
+		  }
+		})();
+		</script>
 		<script src="assets/models/monster/model.js"></script>
 		<script type="text/javascript" src="main.js"></script>
 		<script>
@@ -3009,6 +3025,24 @@ canvas {
 		    window.blackMazeShowLockedSkinVisuals = skinDebugVisualsInput.checked;
 		    localStorage.setItem(skinDebugVisualsStorageKey, String(window.blackMazeShowLockedSkinVisuals));
 		  });
+		  const lowGraphicsInput = document.getElementById("game-menu-low-graphics");
+		  const graphicsNote = document.getElementById("game-menu-graphics-note");
+		  const lowGraphicsStorageKey = "blackmaze-low-graphics-v1";
+		  lowGraphicsInput.checked = !!window.blackMazeLowGraphics;
+		  lowGraphicsInput.addEventListener("change", () => {
+		    window.blackMazeLowGraphics = lowGraphicsInput.checked;
+		    try { localStorage.setItem(lowGraphicsStorageKey, String(window.blackMazeLowGraphics)); } catch (_) {}
+		    const appMain = window.app && window.app.main;
+		    const renderer = appMain && appMain.renderer;
+		    if (renderer) {
+		      if (typeof renderer.setPixelRatio === "function") renderer.setPixelRatio(window.blackMazeLowGraphics ? 0.75 : 1);
+		      if (renderer.shadowMap) {
+		        if (typeof window.blackMazeOriginalShadowMapEnabled === "undefined") window.blackMazeOriginalShadowMapEnabled = renderer.shadowMap.enabled;
+		        renderer.shadowMap.enabled = window.blackMazeLowGraphics ? false : window.blackMazeOriginalShadowMapEnabled;
+		      }
+		    }
+		    if (graphicsNote) graphicsNote.textContent = "Saved. Antialiasing changes apply after reloading.";
+		  });
 		  const monsterModeSelect = document.getElementById("game-menu-monster-mode");
 		  const monsterModeStorageKey = "blackmaze-monster-debug-mode-v2";
 		  monsterModeSelect.value = window.blackMazeMonsterDebugMode || "movement";
@@ -3024,7 +3058,7 @@ canvas {
 		  levelInput.value = String(Number.isInteger(modeLevel) && modeLevel >= 0 ? modeLevel + 1 : 1);
 		  const savedZoom = Number(localStorage.getItem("blackmaze-zoom-coefficient-v1"));
 		  window.blackMazeZoomCoefficient = Number.isFinite(savedZoom) && savedZoom >= 0.75 && savedZoom <= 2.5 ? savedZoom : 1.2;
-		  const savedVerticalFit = Number(localStorage.getItem("blackmaze-vertical-fit-v3"));
+		  const savedVerticalFit = Number(localStorage.getItem("blackmaze-vertical-fit-v4"));
 		  verticalFitInput.value = String(Number.isFinite(savedVerticalFit) && savedVerticalFit >= 0.75 && savedVerticalFit <= 2.5 ? savedVerticalFit : 0.75);
 		  window.blackMazeVerticalFitCoefficient = Number(verticalFitInput.value);
 		  const savedComboFallRaw = window.readBlackMazeComboSetting("blackmaze-combo-fall-v1", "blackmaze-pitch-fall-v1");
@@ -3156,7 +3190,7 @@ canvas {
 		    localStorage.setItem("blackmaze-coin-pitch-fall-v2", String(coinPitchFallRate));
 		    window.blackMazeCoinPitchFallRate = coinPitchFallRate;
 		    window.blackMazeCoinPitchGainPerCoin = coinPitchGain;
-		    localStorage.setItem("blackmaze-vertical-fit-v3", String(verticalFit));
+		    localStorage.setItem("blackmaze-vertical-fit-v4", String(verticalFit));
 		    localStorage.setItem("blackmaze-wall-sound-v1", wallSoundSelect.value);
 		    localStorage.setItem("blackmaze-finish-sound-v1", finishSoundSelect.value);
 		    localStorage.setItem("blackmaze-coin-sound-v1", coinSoundSelect.value);
