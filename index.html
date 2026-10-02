@@ -2167,7 +2167,7 @@ canvas {
 						</div>
 						<div id="game-menu-progression" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-progression">
 							<label for="game-menu-coins">Gold coins</label>
-							<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
+			<input id="game-menu-coins" type="number" min="0" step="0.01" inputmode="decimal">
 							<label for="game-menu-level">Current level (1–330)</label>
 							<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
 						</div>
@@ -2384,8 +2384,11 @@ canvas {
 		    catch (_) { savedProgress = {}; }
 		  }
 		  window.blackMazeSavedProgress = savedProgress && typeof savedProgress === "object" ? savedProgress : {};
-		  window.blackMazeCoinCount = Number.isSafeInteger(window.blackMazeSavedProgress.coins) && window.blackMazeSavedProgress.coins >= 0
-		    ? window.blackMazeSavedProgress.coins : 0;
+		  const roundCoinAmount = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+		  const formatCoinAmount = value => String(roundCoinAmount(value));
+		  const savedCoinCount = Number(window.blackMazeSavedProgress.coins);
+		  window.blackMazeCoinCount = Number.isFinite(savedCoinCount) && savedCoinCount >= 0 && savedCoinCount <= Number.MAX_SAFE_INTEGER
+		    ? roundCoinAmount(savedCoinCount) : 0;
 		  window.blackMazeBallSkin = Number.isInteger(window.blackMazeSavedProgress.ball) && window.blackMazeSavedProgress.ball >= 0
 		    ? window.blackMazeSavedProgress.ball : 0;
 		  const HEAT_SCORE_ENABLED = false;
@@ -2397,21 +2400,22 @@ canvas {
 		  };
 		  renderHeatScore();
 		  const coinCount = document.getElementById("coin-count");
-		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
+		  if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
 		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Maze", coin: "Coin" };
 		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "MAZE", coin: "COIN" };
 		  const ECONOMICS = {
 		    coin_base_value: 1,
 		    maze_reward_base_value: 100,
+		    heat_max_coef: 10,
 		    upgrade_prices: {
-		      ball: { base: 2, multiplier: 100 },
+		      ball: { base: 2, multiplier: 500 },
 		      finish: { base: 4, multiplier: 100 },
 		      heat: { base: 14, multiplier: 10 },
 		      coin: { base: 10, multiplier: 10 }
 		    }
 		  };
-		  const economicsSourceStorageKey = "blackmaze-economics-source-v2";
+		  const economicsSourceStorageKey = "blackmaze-economics-source-v3";
 		  const applyEconomicsText = source => {
 		    const readValue = name => {
 		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
@@ -2419,7 +2423,9 @@ canvas {
 		    };
 		    const coinBaseValue = readValue("coin_base_value");
 		    const mazeRewardBaseValue = readValue("maze_reward_base_value");
-		    if (!Number.isFinite(coinBaseValue) || coinBaseValue < 0 || !Number.isFinite(mazeRewardBaseValue) || mazeRewardBaseValue < 0) return false;
+		    const parsedHeatMaxCoef = readValue("heat_max_coef");
+		    const heatMaxCoef = parsedHeatMaxCoef === null ? ECONOMICS.heat_max_coef : parsedHeatMaxCoef;
+		    if (!Number.isFinite(coinBaseValue) || coinBaseValue < 0 || !Number.isFinite(mazeRewardBaseValue) || mazeRewardBaseValue < 0 || !Number.isFinite(heatMaxCoef) || heatMaxCoef < 1) return false;
 		    const formulaNames = {
 		      ball_power_upgrade_price: "ball",
 		      maze_power_upgrade_price: "finish",
@@ -2437,6 +2443,7 @@ canvas {
 		    }
 		    ECONOMICS.coin_base_value = coinBaseValue;
 		    ECONOMICS.maze_reward_base_value = mazeRewardBaseValue;
+		    ECONOMICS.heat_max_coef = heatMaxCoef;
 		    ECONOMICS.upgrade_prices = nextUpgradePrices;
 		    if (typeof window.renderBlackMazeIdleProgress === "function") window.renderBlackMazeIdleProgress();
 		    return true;
@@ -2487,7 +2494,11 @@ canvas {
 		    const formula = ECONOMICS.upgrade_prices[key];
 		    return Math.pow(formula.base, level) * formula.multiplier;
 		  };
-		  const getCoinCollectionReward = () => ECONOMICS.coin_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.ball) || 1);
+		  const getHeatCoefficient = () => {
+		    const heatPercent = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
+		    return 1 + (ECONOMICS.heat_max_coef - 1) * heatPercent / 100;
+		  };
+		  const getCoinCollectionReward = () => roundCoinAmount(ECONOMICS.coin_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.ball) || 1) * getHeatCoefficient());
 		  const getMazeCompletionReward = () => ECONOMICS.maze_reward_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.finish) || 1);
 		  const savedIdlePowers = window.blackMazeSavedProgress.idlePowers && typeof window.blackMazeSavedProgress.idlePowers === "object"
 		    ? window.blackMazeSavedProgress.idlePowers : {};
@@ -2518,11 +2529,11 @@ canvas {
 		      const level = window.blackMazeIdlePowerLevels[key];
 		      const price = getIdlePowerUpgradePrice(key, level);
 		      if (!Number.isSafeInteger(price) || window.blackMazeCoinCount < price) return;
-		      window.blackMazeCoinCount -= price;
 		      window.blackMazeIdlePowerLevels[key] = level + 1;
-		      if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
+		      window.blackMazeCoinCount = roundCoinAmount(window.blackMazeCoinCount - price);
+		      if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		      const menuCoinsInput = document.getElementById("game-menu-coins");
-		      if (menuCoinsInput) menuCoinsInput.value = String(window.blackMazeCoinCount);
+		      if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
 		      window.renderBlackMazeIdleProgress();
 		      if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
 		    });
@@ -2668,7 +2679,7 @@ canvas {
 		    const label = document.createElement("div");
 		    label.className = "coin-collect-float";
 		    label.setAttribute("aria-hidden", "true");
-		    label.textContent = `+${reward} ₿`;
+		    label.textContent = `+${formatCoinAmount(reward)} ₿`;
 		    label.style.color = coinColor;
 		    label.style.textShadow = `0 0 0.8vmin ${coinColor}, 0 0.35vmin 0.8vmin rgba(0, 0, 0, 0.8)`;
 		    label.style.left = `${x}px`;
@@ -2701,11 +2712,11 @@ canvas {
 		    if (victoryRewardedForCurrentMaze) return;
 		    victoryRewardedForCurrentMaze = true;
 		    const reward = getMazeCompletionReward();
-		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, window.blackMazeCoinCount + reward);
+		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(window.blackMazeCoinCount + reward));
 		    const count = document.getElementById("coin-count");
-		    if (count) count.textContent = String(window.blackMazeCoinCount);
+		    if (count) count.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		    const menuCoinsInput = document.getElementById("game-menu-coins");
-		    if (menuCoinsInput) menuCoinsInput.value = String(window.blackMazeCoinCount);
+		    if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
 		    window.renderBlackMazeIdleProgress();
 		    window.showBlackMazeVictoryFloat(reward);
 		    window.saveBlackMazeProgress();
@@ -2713,11 +2724,11 @@ canvas {
 		  window.collectBlackMazeCoin = (ballNdcX, ballNdcY) => {
 		    const reward = getCoinCollectionReward();
 		    window.showBlackMazeCoinFloat(ballNdcX, ballNdcY, reward);
-		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, window.blackMazeCoinCount + reward);
+		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(window.blackMazeCoinCount + reward));
 		    const count = document.getElementById("coin-count");
-		    if (count) count.textContent = String(window.blackMazeCoinCount);
+		    if (count) count.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		    const menuCoinsInput = document.getElementById("game-menu-coins");
-		    if (menuCoinsInput) menuCoinsInput.value = String(window.blackMazeCoinCount);
+		    if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
 		    window.renderBlackMazeIdleProgress();
 		    decayCoinSoundPitch();
 		    const coinPitchGain = Math.max(0, Number(window.blackMazeCoinPitchGainPerCoin) || 0);
@@ -2906,6 +2917,8 @@ canvas {
 		  
 		(() => {
 		  const progressKey = "blackmaze-progress-v1";
+		  const roundCoinAmount = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+		  const formatCoinAmount = value => String(roundCoinAmount(value));
 		  const menu = document.getElementById("game-menu");
 		  const toggle = document.getElementById("game-menu-toggle");
 		  const levelLabel = document.getElementById("level-text");
@@ -2956,7 +2969,7 @@ canvas {
 		  const coinSoundSelect = document.getElementById("game-menu-coin-sound");
 		  const progress = window.blackMazeSavedProgress || {};
 		  const modeLevel = Number(progress.gameSaveData && progress.gameSaveData["0_lev"]);
-		  coinsInput.value = String(Number.isSafeInteger(progress.coins) && progress.coins >= 0 ? progress.coins : 0);
+		  coinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
 		  levelInput.value = String(Number.isInteger(modeLevel) && modeLevel >= 0 ? modeLevel + 1 : 1);
 		  const savedZoom = Number(localStorage.getItem("blackmaze-zoom-coefficient-v1"));
 		  window.blackMazeZoomCoefficient = Number.isFinite(savedZoom) && savedZoom >= 0.75 && savedZoom <= 2.5 ? savedZoom : 1.2;
@@ -3027,12 +3040,13 @@ canvas {
 		    const comboPulseSpeed = Number(comboPulseSpeedInput.value);
 		    const coinPitchGain = Number(coinPitchGainInput.value);
 		    const coinPitchFallRate = Number(coinPitchFallInput.value);
-		    if (!Number.isSafeInteger(coins) || coins < 0) {
-		      coinsInput.setCustomValidity("Enter a whole number of 0 or more.");
+		    if (!Number.isFinite(coins) || coins < 0 || coins > Number.MAX_SAFE_INTEGER) {
+		      coinsInput.setCustomValidity("Enter a coin amount from 0 or more.");
 		      coinsInput.reportValidity();
 		      return;
 		    }
 		    coinsInput.setCustomValidity("");
+		    const normalizedCoins = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(coins));
 		    if (!Number.isInteger(level) || level < 1 || level > 330) {
 		      levelInput.setCustomValidity("Enter a level from 1 to 330.");
 		      levelInput.reportValidity();
@@ -3096,11 +3110,11 @@ canvas {
 		    localStorage.setItem("blackmaze-finish-sound-v1", finishSoundSelect.value);
 		    localStorage.setItem("blackmaze-coin-sound-v1", coinSoundSelect.value);
 		    const saved = window.blackMazeSavedProgress || {};
-		    saved.coins = coins;
+		    saved.coins = normalizedCoins;
 		    saved.gameSaveData = saved.gameSaveData || {};
 		    saved.gameSaveData["0_lev"] = level - 1;
 		    window.blackMazeSavedProgress = saved;
-		    window.blackMazeCoinCount = coins;
+		    window.blackMazeCoinCount = normalizedCoins;
 		    if (window.blackMazeGameSaveData) {
 		      window.blackMazeGameSaveData["0_lev"] = level - 1;
 		      saved.gameSaveData = window.blackMazeGameSaveData;
