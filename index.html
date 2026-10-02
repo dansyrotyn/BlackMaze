@@ -2246,11 +2246,13 @@ canvas {
 		      localStorage.setItem(progressKey, JSON.stringify(window.blackMazeSavedProgress));
 		    } catch (_) {}
 		  };
+		  window.blackMazePaintedCell = () => {
+		    decayPitch();
+		    window.blackMazePitchPercent = Math.min(100, (Number(window.blackMazePitchPercent) || 0) + 1);
+		    updatePitchMeter();
+		  };
 		  window.collectBlackMazeCoin = () => {
 		    window.blackMazeCoinCount += 1;
-		    decayPitch();
-		    window.blackMazePitchPercent = Math.min(100, (Number(window.blackMazePitchPercent) || 0) + 10);
-		    updatePitchMeter();
 		    const count = document.getElementById("coin-count");
 		    if (count) count.textContent = String(window.blackMazeCoinCount);
 		    if (typeof window.playBlackMazeCoinSound === "function") window.playBlackMazeCoinSound();
