@@ -2057,16 +2057,20 @@ canvas {
 							<option value="4">4 — Falling bells</option>
 							<option value="5">5 — Victory chord</option>
 						</select>
+						</div>
 						<label for="game-menu-coin-sound">Gold coin sound</label>
 						<select id="game-menu-coin-sound">
-							<option value="1">1 — Bright chime</option>
-							<option value="2">2 — Double clink</option>
-							<option value="3">3 — Low coin</option>
-							<option value="4">4 — Sparkle</option>
-							<option value="5">5 — Soft plink</option>
-							<option value="6">6 — Bell drop</option>
+						  <option value="1">1 — Bright chime</option>
+						  <option value="2">2 — Double clink</option>
+						  <option value="3">3 — Low coin</option>
+						  <option value="4">4 — Sparkle</option>
+						  <option value="5">5 — Soft plink</option>
+						  <option value="6">6 — Bell drop</option>
+						  <option value="7">7 — Glassy pluck</option>
+						  <option value="8">8 — Golden trill</option>
+						  <option value="9">9 — Tiny fanfare</option>
+						  <option value="10">10 — Falling sparkle</option>
 						</select>
-						</div>
 						<div class="menu-actions">
 							<button id="game-menu-apply" type="button">SAVE</button>
 							<button id="game-menu-reset" type="button">RESET PROGRESS</button>
@@ -2345,8 +2349,25 @@ canvas {
 		      6: [
 		        { frequency: 1047, endFrequency: 790, duration: 0.18, volume: 0.085, type: "triangle" },
 		        { frequency: 698, endFrequency: 523, delay: 0.06, duration: 0.2, volume: 0.075, type: "sine" }
+		      ],
+		      7: [
+		        { frequency: 440, endFrequency: 554, duration: 0.12, volume: 0.07, type: "triangle" },
+		        { frequency: 659, endFrequency: 622, delay: 0.055, duration: 0.12, volume: 0.045, type: "sine" }
+		      ],
+		      8: [
+		        { frequency: 784, endFrequency: 880, duration: 0.075, volume: 0.06, type: "sine" },
+		        { frequency: 988, endFrequency: 1175, delay: 0.045, duration: 0.09, volume: 0.05, type: "triangle" },
+		        { frequency: 1318, endFrequency: 1245, delay: 0.09, duration: 0.12, volume: 0.035, type: "sine" }
+		      ],
+		      9: [
+		        { frequency: 523, endFrequency: 659, duration: 0.13, volume: 0.08, type: "triangle" },
+		        { frequency: 784, endFrequency: 1047, delay: 0.07, duration: 0.16, volume: 0.055, type: "sine" }
+		      ],
+		      10: [
+		        { frequency: 1568, endFrequency: 1175, duration: 0.11, volume: 0.055, type: "sine" },
+		        { frequency: 1175, endFrequency: 1760, delay: 0.055, duration: 0.15, volume: 0.045, type: "triangle" }
 		      ]
-		    };
+		      };
 		    const pitchMultiplier = 1 + (Number(window.blackMazeCoinPitchPercent) || 0) / 100;
 		    const playChime = () => playTonePattern(context, patterns[variant] || patterns[1], pitchMultiplier);
 		    if (context.state === "suspended") context.resume().then(playChime).catch(() => {});
@@ -2526,10 +2547,10 @@ canvas {
 		  window.blackMazeCoinPitchFallRate = Number(coinPitchFallInput.value);
 		  wallSoundSelect.value = "2";
 		  finishSoundSelect.value = "1";
-		  coinSoundSelect.value = "4";
+		  const savedCoinSound = Number(localStorage.getItem("blackmaze-coin-sound-v1"));
+		  coinSoundSelect.value = String(Number.isInteger(savedCoinSound) && savedCoinSound >= 1 && savedCoinSound <= 10 ? savedCoinSound : 4);
 		  localStorage.setItem("blackmaze-wall-sound-v1", "2");
 		  localStorage.setItem("blackmaze-finish-sound-v1", "1");
-		  localStorage.setItem("blackmaze-coin-sound-v1", "4");
 		  if (window.app && window.app.main && typeof window.app.main.resizeNow === "function") window.app.main.resizeNow();
 
 		  const toggleMenu = () => {
