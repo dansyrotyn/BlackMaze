@@ -2272,6 +2272,11 @@ canvas {
 			<input id="game-menu-feat-tile-count" type="number" min="0" step="1" inputmode="numeric">
 						</div>
 						<div id="game-menu-settings" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-settings" hidden>
+							<label class="menu-debug-toggle" for="game-menu-mirror-levels">
+								<input id="game-menu-mirror-levels" type="checkbox">
+								<span>Mirror levels</span>
+							</label>
+							<small id="game-menu-mirror-levels-note">Mirrors levels 5 and onward from left to right. Changing this setting reloads the game.</small>
 							<label class="menu-debug-toggle" for="game-menu-low-graphics">
 								<input id="game-menu-low-graphics" type="checkbox">
 								<span>Low graphics (better performance)</span>
@@ -2492,11 +2497,18 @@ canvas {
 		<script>
 		(() => {
 		  const key = "blackmaze-low-graphics-v2";
+		  const mirrorLevelsKey = "blackmaze-mirror-levels-v1";
 		  try {
 		    const saved = localStorage.getItem(key);
 		    window.blackMazeLowGraphics = saved === null ? false : saved === "true";
 		  } catch (_) {
 		    window.blackMazeLowGraphics = false;
+		  }
+		  try {
+		    const savedMirrorLevels = localStorage.getItem(mirrorLevelsKey);
+		    window.blackMazeMirrorLevels = savedMirrorLevels === null ? true : savedMirrorLevels === "true";
+		  } catch (_) {
+		    window.blackMazeMirrorLevels = true;
 		  }
 		})();
 		</script>
@@ -3255,6 +3267,14 @@ canvas {
 		  skinDebugVisualsInput.addEventListener("change", () => {
 		    window.blackMazeShowLockedSkinVisuals = skinDebugVisualsInput.checked;
 		    localStorage.setItem(skinDebugVisualsStorageKey, String(window.blackMazeShowLockedSkinVisuals));
+		  });
+		  const mirrorLevelsInput = document.getElementById("game-menu-mirror-levels");
+		  const mirrorLevelsStorageKey = "blackmaze-mirror-levels-v1";
+		  mirrorLevelsInput.checked = window.blackMazeMirrorLevels !== false;
+		  mirrorLevelsInput.addEventListener("change", () => {
+		    window.blackMazeMirrorLevels = mirrorLevelsInput.checked;
+		    try { localStorage.setItem(mirrorLevelsStorageKey, String(window.blackMazeMirrorLevels)); } catch (_) {}
+		    window.location.reload();
 		  });
 		  const lowGraphicsInput = document.getElementById("game-menu-low-graphics");
 		  const graphicsNote = document.getElementById("game-menu-graphics-note");
