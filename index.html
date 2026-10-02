@@ -1025,16 +1025,34 @@ canvas {
   z-index: 12;
 }
 
+#combo-meter-label {
+  position: fixed;
+  font-family: inherit;
+  top: 18.2vmin;
+  right: 0.1vmin;
+  width: 8vmin;
+  min-width: 32px;
+  color: #ff8a24;
+  font-size: clamp(10px, 2.2vmin, 22px);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0 0.8vmin rgba(255, 111, 20, 0.85), 0 1px 2px rgba(0, 0, 0, 0.75);
+  z-index: 35;
+  pointer-events: none;
+}
+
 #combo-meter {
   position: fixed;
   top: 22vmin;
   right: 2vmin;
   bottom: 22vmin;
-  width: 1.5vmin;
-  min-width: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  width: 3vmin;
+  min-width: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(to top, rgba(242, 189, 22, 0.16), rgba(255, 233, 92, 0.22));
   overflow: hidden;
   z-index: 35;
   pointer-events: none;
@@ -1047,8 +1065,8 @@ canvas {
   bottom: 0;
   height: 0%;
   border-radius: inherit;
-  background: linear-gradient(to top, #e28b08, #ffe77a);
-  box-shadow: 0 0 1.4vmin rgba(255, 206, 63, 0.65);
+  background: linear-gradient(to top, #ff8a24, #ffb45c);
+  box-shadow: 0 0 1.8vmin rgba(255, 111, 20, 0.72);
   transition: height 220ms ease-out;
 }
 
@@ -2002,6 +2020,7 @@ canvas {
 	<body style="background: #000000; touch-action: none">
 		<div style="font-family: ui-font">.</div>
 		<div id="ui">
+			<div id="combo-meter-label" aria-hidden="true">HEAT</div>
 			<div id="combo-meter" role="progressbar" aria-label="Combo bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
 				<div id="combo-meter-fill"></div>
 			</div>
@@ -2223,6 +2242,7 @@ canvas {
 		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
 		  const comboMeter = document.getElementById("combo-meter");
 		  const comboMeterFill = document.getElementById("combo-meter-fill");
+		  const comboMeterLabel = document.getElementById("combo-meter-label");
 		  window.blackMazeComboPercent = 0;
 		  window.readBlackMazeComboSetting = (key, legacyKey) => {
 		    const currentValue = localStorage.getItem(key);
@@ -2273,8 +2293,18 @@ canvas {
 		  };
 		  const updateComboMeter = () => {
 		    const combo = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
+		    const heatHue = Math.round(30 * (1 - combo / 100));
+		    const heatColor = `hsl(${heatHue}, 100%, 52%)`;
 		    window.blackMazeComboPercent = combo;
-		    if (comboMeterFill) comboMeterFill.style.height = `${combo}%`;
+		    if (comboMeterFill) {
+		      comboMeterFill.style.height = `${combo}%`;
+		      comboMeterFill.style.background = `linear-gradient(to top, ${heatColor}, hsl(${heatHue}, 100%, 66%))`;
+		      comboMeterFill.style.boxShadow = `0 0 1.8vmin hsla(${heatHue}, 100%, 55%, 0.72)`;
+		    }
+		    if (comboMeterLabel) {
+		      comboMeterLabel.style.color = `hsl(${heatHue}, 100%, 68%)`;
+		      comboMeterLabel.style.textShadow = `0 0 0.8vmin hsla(${heatHue}, 100%, 55%, 0.85), 0 1px 2px rgba(0, 0, 0, 0.75)`;
+		    }
 		    if (comboMeter) comboMeter.setAttribute("aria-valuenow", String(Math.round(combo)));
 		  };
 		  const decayCombo = () => {
