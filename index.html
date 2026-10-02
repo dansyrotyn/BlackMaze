@@ -2017,28 +2017,40 @@ canvas {
 		    s: 'down', arrowdown: 'down',
 		    a: 'left', arrowleft: 'left'
 		  };
+		  const codeDirections = {
+		    keyw: 'up', arrowup: 'up',
+		    keyd: 'right', arrowright: 'right',
+		    keys: 'down', arrowdown: 'down',
+		    keya: 'left', arrowleft: 'left'
+		  };
 		  const heldKeys = new Map();
 		  const state = window.__mazeKeyboardState = { pressed: [], queue: [], cursor: 0 };
+		  function getControlKey(event) {
+		    const code = (event.code || '').toLowerCase();
+		    const key = event.key.toLowerCase();
+		    const direction = codeDirections[code] || keyDirections[key];
+		    return direction ? { id: codeDirections[code] ? code : key, direction } : null;
+		  }
 		  function syncPressed() {
 		    state.pressed = [...new Set(heldKeys.values())];
 		  }
 		  window.addEventListener('keydown', event => {
-		    const key = event.key.toLowerCase();
-		    const direction = keyDirections[key];
-		    if (!direction) return;
+		    const control = getControlKey(event);
+		    if (!control) return;
 		    const active = document.activeElement;
 		    if (active && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
 		    event.preventDefault();
 		    event.stopImmediatePropagation();
-		    if (event.repeat || heldKeys.has(key) || event.altKey || event.ctrlKey || event.metaKey) return;
-		    heldKeys.set(key, direction);
-		    state.queue.push(direction);
+		    if (event.repeat || heldKeys.has(control.id) || event.altKey || event.ctrlKey || event.metaKey) return;
+		    heldKeys.set(control.id, control.direction);
+		    state.queue.push(control.direction);
 		    const controls = window.app && window.app.controls;
 		    if (controls) controls.isDown = true;
 		    syncPressed();
 		  }, { capture: true, passive: false });
 		  window.addEventListener('keyup', event => {
-		    heldKeys.delete(event.key.toLowerCase());
+		    const control = getControlKey(event);
+		    if (control) heldKeys.delete(control.id);
 		    syncPressed();
 		    if (heldKeys.size === 0) {
 		      const controls = window.app && window.app.controls;
