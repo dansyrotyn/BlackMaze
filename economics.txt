@@ -2,10 +2,12 @@ coin_base_value = 1;
 maze_reward_base_value = 100;
 heat_max_base_coef = 2;
 coin_power_multiplier_coef = 2;
-coin_collection_reward = coin_base_value * ball_lvl * heat_coef;
+# ball_coin_value is hardcoded in game code: level 1 adds 1, each next level adds 0.05 less, minimum 0.1.
+# Heat-level contributions use the same 1.00, 0.95, 0.90... curve, with a hardcoded minimum of 0.5.
+coin_collection_reward = coin_base_value * ball_coin_value * heat_coef;
 maze_completion_reward = maze_reward_base_value * maze_lvl;
 
 ball_power_upgrade_price = lvl * 180;
 heat_power_upgrade_price = lvl * 100;
-maze_power_upgrade_price = lvl * 550;
+maze_power_upgrade_price = lvl * 250;
 coin_power_upgrade_price = pow(2, lvl) * 50;

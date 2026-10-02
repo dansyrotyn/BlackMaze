@@ -2450,7 +2450,7 @@ canvas {
 		    coin_power_multiplier_coef: 2,
 		    upgrade_prices: {
 	      ball: { type: "linear", multiplier: 180 },
-	      finish: { type: "linear", multiplier: 550 },
+	      finish: { type: "linear", multiplier: 250 },
 		      heat: { type: "linear", multiplier: 100 },
 		      coin: { type: "exponential", base: 2, multiplier: 50 }
 		    }
@@ -2525,14 +2525,18 @@ canvas {
 		      } catch (_) {}
 		      economicsImportStatus.textContent = "Using built-in economics values.";
 		      return;
-		    }
-		    try {
-		      const savedSource = localStorage.getItem(economicsSourceStorageKey);
-		      if (savedSource && applyEconomicsText(savedSource)) {
-		        economicsImportStatus.textContent = "Loaded saved economics settings.";
-		        return;
-		      }
-		    } catch (_) {}
+	    }
+	    try {
+	      const savedSource = localStorage.getItem(economicsSourceStorageKey);
+	      if (savedSource) {
+	        const migratedSource = savedSource.replace(/^([ \t]*maze_power_upgrade_price[ \t]*=[ \t]*)lvl[ \t]*\*[ \t]*550([ \t]*;?[ \t]*)$/m, "$1lvl * 250$2");
+	        if (applyEconomicsText(migratedSource)) {
+	          if (migratedSource !== savedSource) localStorage.setItem(economicsSourceStorageKey, migratedSource);
+	          economicsImportStatus.textContent = "Loaded saved economics settings.";
+	          return;
+	        }
+	      }
+	    } catch (_) {}
 		    economicsImportStatus.textContent = "Using built-in values. Load economics.txt to import changes.";
 		  };
 		  const economicsFileInput = document.getElementById("game-menu-economics-file");
@@ -2565,13 +2569,32 @@ canvas {
 		    else return NaN;
 		    return Math.ceil(price);
 		  };
+		  const getBallCoinValue = level => {
+		    const ballLevel = Math.max(1, Math.floor(Number(level) || 1));
+		    let totalValue = 0;
+		    for (let levelIndex = 0; levelIndex < ballLevel; levelIndex++) {
+		      totalValue += Math.max(0.1, 1 - levelIndex * 0.05);
+		    }
+		    return totalValue;
+		  };
+		  const getHeatPowerValue = level => {
+		    const heatLevel = Math.max(1, Math.floor(Number(level) || 1));
+		    let totalValue = 0;
+		    for (let levelIndex = 0; levelIndex < heatLevel; levelIndex++) {
+		      totalValue += Math.max(0.5, 1 - levelIndex * 0.05);
+		    }
+		    return totalValue;
+		  };
 		  const getHeatCoefficient = () => {
 		    const heatPercent = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
 		    const heatPowerLevel = Math.max(1, Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.heat) || 1);
-		    const maximumHeatCoefficient = ECONOMICS.heat_max_base_coef * heatPowerLevel;
+		    const maximumHeatCoefficient = ECONOMICS.heat_max_base_coef * getHeatPowerValue(heatPowerLevel);
 		    return 1 + (maximumHeatCoefficient - 1) * heatPercent / 100;
 		  };
-		  const getCoinCollectionReward = () => roundCoinAmount(ECONOMICS.coin_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.ball) || 1) * getHeatCoefficient());
+		  const getCoinCollectionReward = () => {
+		    const ballLevel = Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.ball) || 1;
+		    return roundCoinAmount(ECONOMICS.coin_base_value * getBallCoinValue(ballLevel) * getHeatCoefficient());
+		  };
 		  const getMazeCompletionReward = () => ECONOMICS.maze_reward_base_value * (Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.finish) || 1);
 		  const savedIdlePowers = window.blackMazeSavedProgress.idlePowers && typeof window.blackMazeSavedProgress.idlePowers === "object"
 		    ? window.blackMazeSavedProgress.idlePowers : {};
