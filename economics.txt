@@ -5,7 +5,7 @@ coin_power_multiplier_coef = 2;
 coin_collection_reward = coin_base_value * ball_lvl * heat_coef;
 maze_completion_reward = maze_reward_base_value * maze_lvl;
 
-ball_power_upgrade_price = lvl * 80;
+ball_power_upgrade_price = lvl * 180;
 heat_power_upgrade_price = lvl * 100;
-maze_power_upgrade_price = pow(lvl, 2) * 100;
+maze_power_upgrade_price = lvl * 550;
 coin_power_upgrade_price = pow(2, lvl) * 50;

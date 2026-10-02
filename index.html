@@ -2449,14 +2449,14 @@ canvas {
 		    heat_max_base_coef: 2,
 		    coin_power_multiplier_coef: 2,
 		    upgrade_prices: {
-		      ball: { type: "linear", multiplier: 80 },
-		      finish: { type: "power", exponent: 2, multiplier: 100 },
+	      ball: { type: "linear", multiplier: 180 },
+	      finish: { type: "linear", multiplier: 550 },
 		      heat: { type: "linear", multiplier: 100 },
 		      coin: { type: "exponential", base: 2, multiplier: 50 }
 		    }
 		  };
 		  window.blackMazeCoinPowerMultiplierCoef = ECONOMICS.coin_power_multiplier_coef;
-		  const economicsSourceStorageKey = "blackmaze-economics-source-v16";
+	  const economicsSourceStorageKey = "blackmaze-economics-source-v17";
 		  const applyEconomicsText = source => {
 		    const readValue = name => {
 		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
