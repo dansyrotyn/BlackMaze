@@ -10,7 +10,7 @@
 
 		<style>
 			@font-face {
-				font-family: "ui-font";
+				font-family: "built_bd";
 				src: url("assets/fonts/built_bd.ttf");
 			}
 			@font-face {
@@ -39,6 +39,7 @@
 }
 :root {
   --swiper-theme-color: #007aff;
+  --game-font: "built_bd";
 }
 .swiper-container {
   margin-left: auto;
@@ -717,7 +718,7 @@ html {
   background: 0 0;
 
   touch-action: none;
-  font-family: ui-font;
+  font-family: var(--game-font);
 }
 
 canvas {
@@ -734,6 +735,14 @@ canvas {
   height: 100%;
   z-index: 99;
   display: none;
+}
+
+#ui,
+#ui button,
+#ui input,
+#ui select,
+#ui textarea {
+  font-family: var(--game-font);
 }
 
 .screen {
@@ -1025,24 +1034,6 @@ canvas {
   z-index: 12;
 }
 
-#combo-meter-label {
-  position: fixed;
-  font-family: inherit;
-  top: 18.2vmin;
-  right: 0.1vmin;
-  width: 8vmin;
-  min-width: 32px;
-  color: #ff8a24;
-  font-size: clamp(10px, 2.2vmin, 22px);
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  line-height: 1;
-  text-align: center;
-  text-shadow: 0 0 0.8vmin rgba(255, 111, 20, 0.85), 0 1px 2px rgba(0, 0, 0, 0.75);
-  z-index: 35;
-  pointer-events: none;
-}
-
 #combo-meter {
   position: fixed;
   top: 22vmin;
@@ -1090,6 +1081,7 @@ canvas {
   display: flex;
   width: 100%;
   position: relative;
+  font-family: var(--game-font);
   font-size: 8vmin;
   text-align: center;
   justify-content: center;
@@ -1587,7 +1579,7 @@ canvas {
   display: grid;
   position: relative;
   height: 100%;
-  font-family: ui-font2;
+  font-family: var(--game-font);
   justify-content: center;
   align-items: center;
   justify-items: center;
@@ -1891,7 +1883,7 @@ canvas {
     position: absolute;
     text-align: center;
     font-size: 40px;
-    font-family: ui-font;
+    font-family: var(--game-font);
     width:100%;
 
     color: #d1445e;
@@ -2018,9 +2010,8 @@ canvas {
 }
 </style></head>
 	<body style="background: #000000; touch-action: none">
-		<div style="font-family: ui-font">.</div>
+		<div style="font-family: var(--game-font)">.</div>
 		<div id="ui">
-			<div id="combo-meter-label" aria-hidden="true">HEAT</div>
 			<div id="combo-meter" role="progressbar" aria-label="Combo bar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
 				<div id="combo-meter-fill"></div>
 			</div>
@@ -2242,7 +2233,6 @@ canvas {
 		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
 		  const comboMeter = document.getElementById("combo-meter");
 		  const comboMeterFill = document.getElementById("combo-meter-fill");
-		  const comboMeterLabel = document.getElementById("combo-meter-label");
 		  window.blackMazeComboPercent = 0;
 		  window.readBlackMazeComboSetting = (key, legacyKey) => {
 		    const currentValue = localStorage.getItem(key);
@@ -2300,10 +2290,6 @@ canvas {
 		      comboMeterFill.style.height = `${combo}%`;
 		      comboMeterFill.style.background = `linear-gradient(to top, ${heatColor}, hsl(${heatHue}, 100%, 66%))`;
 		      comboMeterFill.style.boxShadow = `0 0 1.8vmin hsla(${heatHue}, 100%, 55%, 0.72)`;
-		    }
-		    if (comboMeterLabel) {
-		      comboMeterLabel.style.color = `hsl(${heatHue}, 100%, 68%)`;
-		      comboMeterLabel.style.textShadow = `0 0 0.8vmin hsla(${heatHue}, 100%, 55%, 0.85), 0 1px 2px rgba(0, 0, 0, 0.75)`;
 		    }
 		    if (comboMeter) comboMeter.setAttribute("aria-valuenow", String(Math.round(combo)));
 		  };
