@@ -2407,15 +2407,17 @@ canvas {
 		  const ECONOMICS = {
 		    coin_base_value: 1,
 		    maze_reward_base_value: 100,
-		    heat_max_base_coef: 2.5,
+		    heat_max_base_coef: 10,
+		    coin_power_multiplier_coef: 2,
 		    upgrade_prices: {
-		      ball: { base: 2, multiplier: 500 },
+		      ball: { base: 3, multiplier: 80 },
 		      finish: { base: 3, multiplier: 150 },
 		      heat: { base: 2, multiplier: 100 },
-		      coin: { base: 10, multiplier: 20 }
+		      coin: { base: 5, multiplier: 20 }
 		    }
 		  };
-		  const economicsSourceStorageKey = "blackmaze-economics-source-v6";
+		  window.blackMazeCoinPowerMultiplierCoef = ECONOMICS.coin_power_multiplier_coef;
+		  const economicsSourceStorageKey = "blackmaze-economics-source-v10";
 		  const applyEconomicsText = source => {
 		    const readValue = name => {
 		      const match = source.match(new RegExp(`^\\s*${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?\\s*$`, "m"));
@@ -2425,7 +2427,9 @@ canvas {
 		    const mazeRewardBaseValue = readValue("maze_reward_base_value");
 		    const parsedHeatMaxBaseCoef = readValue("heat_max_base_coef");
 		    const heatMaxBaseCoef = parsedHeatMaxBaseCoef === null ? ECONOMICS.heat_max_base_coef : parsedHeatMaxBaseCoef;
-		    if (!Number.isFinite(coinBaseValue) || coinBaseValue < 0 || !Number.isFinite(mazeRewardBaseValue) || mazeRewardBaseValue < 0 || !Number.isFinite(heatMaxBaseCoef) || heatMaxBaseCoef < 1) return false;
+		    const parsedCoinPowerMultiplierCoef = readValue("coin_power_multiplier_coef");
+		    const coinPowerMultiplierCoef = parsedCoinPowerMultiplierCoef === null ? ECONOMICS.coin_power_multiplier_coef : parsedCoinPowerMultiplierCoef;
+		    if (!Number.isFinite(coinBaseValue) || coinBaseValue < 0 || !Number.isFinite(mazeRewardBaseValue) || mazeRewardBaseValue < 0 || !Number.isFinite(heatMaxBaseCoef) || heatMaxBaseCoef < 1 || !Number.isFinite(coinPowerMultiplierCoef) || coinPowerMultiplierCoef < 0) return false;
 		    const formulaNames = {
 		      ball_power_upgrade_price: "ball",
 		      maze_power_upgrade_price: "finish",
@@ -2444,6 +2448,8 @@ canvas {
 		    ECONOMICS.coin_base_value = coinBaseValue;
 		    ECONOMICS.maze_reward_base_value = mazeRewardBaseValue;
 		    ECONOMICS.heat_max_base_coef = heatMaxBaseCoef;
+		    ECONOMICS.coin_power_multiplier_coef = coinPowerMultiplierCoef;
+		    window.blackMazeCoinPowerMultiplierCoef = coinPowerMultiplierCoef;
 		    ECONOMICS.upgrade_prices = nextUpgradePrices;
 		    if (typeof window.renderBlackMazeIdleProgress === "function") window.renderBlackMazeIdleProgress();
 		    return true;
