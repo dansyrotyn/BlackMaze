@@ -2792,7 +2792,6 @@ canvas {
 		    comboUpdatedAt = Date.now();
 		  };
 		  window.resumeBlackMazeComboFall = () => {
-		    if (comboFallWaitingForNextMove) return;
 		    comboFallPaused = false;
 		    comboUpdatedAt = Date.now();
 		  };
@@ -2830,7 +2829,8 @@ canvas {
 		    const decayStartsAt = Math.max(previousUpdateAt, comboFallPauseUntil);
 		    const elapsedSeconds = Math.max(0, now - decayStartsAt) / 1000;
 		    if (window.blackMazeComboPercent > 0 && elapsedSeconds > 0) {
-		      window.blackMazeComboPercent = Math.max(0, window.blackMazeComboPercent - elapsedSeconds * window.blackMazeComboFallRate);
+		      const fallSpeed = window.blackMazeComboFallRate * (comboFallWaitingForNextMove ? 1 / 3 : 1);
+		      window.blackMazeComboPercent = Math.max(0, window.blackMazeComboPercent - elapsedSeconds * fallSpeed);
 		      updateComboMeter();
 		    }
 		  };
