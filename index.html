@@ -991,6 +991,7 @@ canvas {
   right: 0;
   top: -1.5vmin;
   width: 6vmin;
+  display: none !important;
 }
 
 #ball-btn {
@@ -1874,24 +1875,85 @@ canvas {
 /* Minimal play-only HUD adjustments */
 #gamemodes-btn,
 #gamemodes-container { display: none !important; }
+#game-menu {
+  position: absolute;
+  top: 1.5vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  font-family: inherit;
+  color: #252525;
+}
+#game-menu-toggle,
+#game-menu-panel button {
+  border: 0;
+  border-radius: 1.5vmin;
+  background: #333;
+  color: #fff;
+  font: inherit;
+  font-size: 3vmin;
+  font-weight: 700;
+  padding: 1vmin 3vmin;
+  cursor: pointer;
+}
+#game-menu-panel {
+  position: absolute;
+  top: calc(100% + 1vmin);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(76vw, 48vmin);
+  box-sizing: border-box;
+  padding: 2.5vmin;
+  border-radius: 2vmin;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 1vmin 3vmin rgba(0, 0, 0, 0.35);
+  display: grid;
+  gap: 1.8vmin;
+  font-size: 3vmin;
+}
+#game-menu-panel[hidden] { display: none; }
+#game-menu-panel label { display: grid; gap: 0.7vmin; }
+#game-menu-panel input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #aaa;
+  border-radius: 1vmin;
+  padding: 1.2vmin;
+  font: inherit;
+  font-size: 4vmin;
+}
+#game-menu-panel .menu-actions { display: flex; gap: 1vmin; }
+#game-menu-panel .menu-actions button { flex: 1; font-size: 2.5vmin; padding-inline: 1vmin; }
+#game-menu-reset { background: #a72a2a !important; }
+#game-menu-toggle { display: none !important; }
+#unlocked-messagebox-container { display: none !important; pointer-events: none !important; }
 #level-text {
   display: flex !important;
   position: absolute !important;
-  top: 3vmin !important;
+  top: 1.5vmin !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
   width: max-content !important;
   max-width: 60vw;
   height: 10vmin;
+  min-height: 10vmin;
+  box-sizing: border-box;
+  padding: 1vmin 3vmin;
+  border-radius: 1.5vmin;
+  background: #333;
+  color: #fff !important;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  z-index: 11;
-  pointer-events: none;
+  z-index: 31;
+  pointer-events: auto;
+  cursor: pointer;
+  font-size: 4vmin;
+  font-weight: 700;
 }
 @media screen and (orientation: landscape) {
   #level-text {
-    top: 3vmin !important;
+    top: 1.5vmin !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
   }
@@ -1918,7 +1980,24 @@ canvas {
 						<img id="newtag-img" />
 					</div>
 				</div>
-				<div id="level-text"></div>
+				<div id="game-menu">
+					<button id="game-menu-toggle" type="button" aria-expanded="false" aria-controls="game-menu-panel">MENU</button>
+					<div id="game-menu-panel" hidden>
+						<label for="game-menu-coins">Gold coins</label>
+						<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
+						<label for="game-menu-level">Current level (1–330)</label>
+						<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
+						<label for="game-menu-zoom">Maze zoom coefficient</label>
+						<input id="game-menu-zoom" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
+						<label for="game-menu-vertical-fit">Vertical fit (higher = smaller maze)</label>
+						<input id="game-menu-vertical-fit" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
+						<div class="menu-actions">
+							<button id="game-menu-apply" type="button">SAVE</button>
+							<button id="game-menu-reset" type="button">RESET PROGRESS</button>
+						</div>
+					</div>
+				</div>
+				<div id="level-text" role="button" tabindex="0" aria-controls="game-menu-panel" aria-expanded="false" title="Open game menu"></div>
 				<div id="limit-moves-container">
 					<div id="limit-text"></div>
 					<div id="limit-number-text"></div>
@@ -2153,6 +2232,101 @@ canvas {
 		    syncPressed();
 		    const controls = window.app && window.app.controls;
 		    if (controls) controls.isDown = false;
+		  });
+		})();
+		</script>
+		<script>
+		(() => {
+		  const progressKey = "blackmaze-progress-v1";
+		  const menu = document.getElementById("game-menu");
+		  const toggle = document.getElementById("game-menu-toggle");
+		  const levelLabel = document.getElementById("level-text");
+		  const panel = document.getElementById("game-menu-panel");
+		  const coinsInput = document.getElementById("game-menu-coins");
+		  const levelInput = document.getElementById("game-menu-level");
+		  const zoomInput = document.getElementById("game-menu-zoom");
+		  const verticalFitInput = document.getElementById("game-menu-vertical-fit");
+		  const progress = window.blackMazeSavedProgress || {};
+		  const modeLevel = Number(progress.gameSaveData && progress.gameSaveData["0_lev"]);
+		  coinsInput.value = String(Number.isSafeInteger(progress.coins) && progress.coins >= 0 ? progress.coins : 0);
+		  levelInput.value = String(Number.isInteger(modeLevel) && modeLevel >= 0 ? modeLevel + 1 : 1);
+		  const savedZoom = Number(localStorage.getItem("blackmaze-zoom-coefficient-v1"));
+		  zoomInput.value = String(Number.isFinite(savedZoom) && savedZoom >= 0.75 && savedZoom <= 2.5 ? savedZoom : 1.2);
+		  window.blackMazeZoomCoefficient = Number(zoomInput.value);
+		  const savedVerticalFit = Number(localStorage.getItem("blackmaze-vertical-fit-v1"));
+		  verticalFitInput.value = String(Number.isFinite(savedVerticalFit) && savedVerticalFit >= 0.75 && savedVerticalFit <= 2.5 ? savedVerticalFit : 1.25);
+		  window.blackMazeVerticalFitCoefficient = Number(verticalFitInput.value);
+		  if (window.app && window.app.main && typeof window.app.main.resizeNow === "function") window.app.main.resizeNow();
+
+		  const toggleMenu = () => {
+		    const open = panel.hidden;
+		    panel.hidden = !open;
+		    toggle.setAttribute("aria-expanded", String(open));
+		    levelLabel.setAttribute("aria-expanded", String(open));
+		  };
+		  toggle.addEventListener("click", toggleMenu);
+		  levelLabel.addEventListener("click", toggleMenu);
+		  levelLabel.addEventListener("keydown", event => {
+		    if (event.key === "Enter" || event.key === " ") {
+		      event.preventDefault();
+		      toggleMenu();
+		    }
+		  });
+		  document.addEventListener("click", event => {
+		    if (!menu.contains(event.target) && !levelLabel.contains(event.target)) {
+		      panel.hidden = true;
+		      toggle.setAttribute("aria-expanded", "false");
+		      levelLabel.setAttribute("aria-expanded", "false");
+		    }
+		  });
+		  document.getElementById("game-menu-apply").addEventListener("click", () => {
+		    const coins = Number(coinsInput.value);
+		    const level = Number(levelInput.value);
+		    const zoom = Number(zoomInput.value);
+		    const verticalFit = Number(verticalFitInput.value);
+		    if (!Number.isSafeInteger(coins) || coins < 0) {
+		      coinsInput.setCustomValidity("Enter a whole number of 0 or more.");
+		      coinsInput.reportValidity();
+		      return;
+		    }
+		    coinsInput.setCustomValidity("");
+		    if (!Number.isInteger(level) || level < 1 || level > 330) {
+		      levelInput.setCustomValidity("Enter a level from 1 to 330.");
+		      levelInput.reportValidity();
+		      return;
+		    }
+		    levelInput.setCustomValidity("");
+		    if (!Number.isFinite(zoom) || zoom < 0.75 || zoom > 2.5) {
+		      zoomInput.setCustomValidity("Enter a zoom coefficient from 0.75 to 2.5.");
+		      zoomInput.reportValidity();
+		      return;
+		    }
+		    zoomInput.setCustomValidity("");
+		    if (!Number.isFinite(verticalFit) || verticalFit < 0.75 || verticalFit > 2.5) {
+		      verticalFitInput.setCustomValidity("Enter a vertical fit coefficient from 0.75 to 2.5.");
+		      verticalFitInput.reportValidity();
+		      return;
+		    }
+		    verticalFitInput.setCustomValidity("");
+		    localStorage.setItem("blackmaze-zoom-coefficient-v1", String(zoom));
+		    localStorage.setItem("blackmaze-vertical-fit-v1", String(verticalFit));
+		    const saved = window.blackMazeSavedProgress || {};
+		    saved.coins = coins;
+		    saved.gameSaveData = saved.gameSaveData || {};
+		    saved.gameSaveData["0_lev"] = level - 1;
+		    window.blackMazeSavedProgress = saved;
+		    window.blackMazeCoinCount = coins;
+		    if (window.blackMazeGameSaveData) {
+		      window.blackMazeGameSaveData["0_lev"] = level - 1;
+		      saved.gameSaveData = window.blackMazeGameSaveData;
+		    }
+		    if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
+		    else localStorage.setItem(progressKey, JSON.stringify(saved));
+		    window.location.reload();
+		  });
+		  document.getElementById("game-menu-reset").addEventListener("click", () => {
+		    localStorage.removeItem(progressKey);
+		    window.location.reload();
 		  });
 		})();
 		</script>
