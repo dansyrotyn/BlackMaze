@@ -2041,6 +2041,19 @@ canvas {
   text-shadow: 0 0 0.8vmin rgba(255, 191, 35, 0.95), 0 0.35vmin 0.8vmin rgba(0, 0, 0, 0.8);
   animation: blackmaze-coin-float 900ms cubic-bezier(0.18, 0.72, 0.28, 1) both;
 }
+.feat-vfx-level {
+  font-size: 0.48em;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+}
+.feat-vfx-title {
+  font-size: 0.82em;
+  line-height: 1;
+}
+.feat-vfx-amount {
+  font-size: 1em;
+  line-height: 1;
+}
 @keyframes blackmaze-coin-float {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
   14% { opacity: 1; transform: translate(-50%, calc(-50% - 8px)) scale(1.22); }
@@ -2323,7 +2336,7 @@ canvas {
 						<button class="idle-power-upgrade" id="idle-power-upgrade-heat" type="button">1 ₿</button>
 					</div>
 					<div class="idle-power-widget" data-idle-power="finish">
-						<div class="idle-power-label" id="idle-power-label-finish">MAZE 1</div>
+						<div class="idle-power-label" id="idle-power-label-finish">FEAT 1</div>
 						<button class="idle-power-upgrade" id="idle-power-upgrade-finish" type="button">1 ₿</button>
 					</div>
 					<div class="idle-power-widget" data-idle-power="coin">
@@ -2506,8 +2519,8 @@ canvas {
 		  window.blackMazeBallMoveCount = Number.isSafeInteger(savedBallMoveCount) && savedBallMoveCount >= 0 ? savedBallMoveCount : 0;
 		  if (ballMoveCount) ballMoveCount.textContent = String(window.blackMazeBallMoveCount);
 		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
-		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Maze", coin: "Coin" };
-		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "MAZE", coin: "COIN" };
+		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Feat", coin: "Coin" };
+		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "FEAT", coin: "COIN" };
 		  const ECONOMICS = {
 		    coin_base_value: 1,
 		    maze_reward_base_value: 100,
@@ -2864,23 +2877,38 @@ canvas {
 		  };
 		  let victoryRewardedForCurrentMaze = false;
 		  window.resetBlackMazeVictoryReward = () => { victoryRewardedForCurrentMaze = false; };
-		  window.showBlackMazeVictoryFloat = (reward = getMazeCompletionReward()) => {
+		  window.showBlackMazeVictoryFloat = (reward = getMazeCompletionReward(), completedLevel = null) => {
 		    const rewardColor = "#ffe06a";
 		    const label = document.createElement("div");
-		    label.className = "coin-collect-float";
+		    label.className = "coin-collect-float feat-reward-float";
 		    label.setAttribute("aria-hidden", "true");
-		    label.textContent = `Reward!\n+${reward} ₿`;
-		    label.style.whiteSpace = "pre-line";
+		    const levelCaption = document.createElement("span");
+		    levelCaption.className = "feat-vfx-level";
+		    levelCaption.textContent = Number.isSafeInteger(Number(completedLevel)) && Number(completedLevel) > 0
+		      ? `LEVEL ${Number(completedLevel)} COMPLETED`
+		      : "LEVEL COMPLETED";
+		    const title = document.createElement("span");
+		    title.className = "feat-vfx-title";
+		    title.textContent = "FEAT REWARD";
+		    const amount = document.createElement("span");
+		    amount.className = "feat-vfx-amount";
+		    amount.textContent = `+${formatCoinAmount(reward)} ₿`;
+		    label.append(levelCaption, title, amount);
+		    label.style.display = "flex";
+		    label.style.flexDirection = "column";
+		    label.style.alignItems = "center";
+		    label.style.gap = "0.65vmin";
+		    label.style.whiteSpace = "normal";
 		    label.style.textAlign = "center";
 		    label.style.fontSize = "clamp(20px, 5.2vmin, 40px)";
-		    label.style.animationDuration = "1800ms";
+		    label.style.animationDuration = "2700ms";
 		    label.style.color = rewardColor;
 		    label.style.textShadow = `0 0 0.8vmin ${rewardColor}, 0 0.35vmin 0.8vmin rgba(0, 0, 0, 0.8)`;
 		    label.style.left = "50vw";
 		    label.style.top = "50vh";
 		    document.body.appendChild(label);
 		    label.addEventListener("animationend", () => label.remove(), { once: true });
-		    setTimeout(() => label.remove(), 2400);
+		    setTimeout(() => label.remove(), 3600);
 		  };
 		  window.awardBlackMazeVictoryReward = (ndcX, ndcY) => {
 		    if (victoryRewardedForCurrentMaze) return;
@@ -2892,7 +2920,10 @@ canvas {
 		      const menuCoinsInput = document.getElementById("game-menu-coins");
 		      if (menuCoinsInput) menuCoinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
 		      window.renderBlackMazeIdleProgress();
-		    window.showBlackMazeVictoryFloat(reward);
+		    const levelLabel = document.getElementById("level-text");
+		    const levelMatch = levelLabel && levelLabel.textContent.match(/\d+/);
+		    const completedLevel = levelMatch ? Number(levelMatch[0]) : null;
+		    window.showBlackMazeVictoryFloat(reward, completedLevel);
 		    window.saveBlackMazeProgress();
 		  };
 		  window.collectBlackMazeCoin = (ballNdcX, ballNdcY) => {
