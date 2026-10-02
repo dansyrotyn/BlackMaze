@@ -1025,6 +1025,33 @@ canvas {
   z-index: 12;
 }
 
+#coin-pitch-meter {
+  position: fixed;
+  top: 22vmin;
+  right: 2vmin;
+  bottom: 22vmin;
+  width: 1.5vmin;
+  min-width: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  z-index: 35;
+  pointer-events: none;
+}
+
+#coin-pitch-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  border-radius: inherit;
+  background: linear-gradient(to top, #e28b08, #ffe77a);
+  box-shadow: 0 0 1.4vmin rgba(255, 206, 63, 0.65);
+  transition: height 220ms ease-out;
+}
+
 .coin-icon {
   width: 5vmin;
   height: 5vmin;
@@ -1975,6 +2002,9 @@ canvas {
 	<body style="background: #000000; touch-action: none">
 		<div style="font-family: ui-font">.</div>
 		<div id="ui">
+			<div id="coin-pitch-meter" role="progressbar" aria-label="Coin pitch" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+				<div id="coin-pitch-fill"></div>
+			</div>
 			<div id="top-banner">
 				<div id="top-banner-bg"></div>
 				<div id="top-banner-text"></div>
@@ -2002,6 +2032,8 @@ canvas {
 						<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
 						<label for="game-menu-vertical-fit">Vertical fit (higher = smaller maze)</label>
 						<input id="game-menu-vertical-fit" type="number" min="0.75" max="2.5" step="0.05" inputmode="decimal">
+						<label for="game-menu-pitch-fall">Pitch fall (% per second)</label>
+						<input id="game-menu-pitch-fall" type="number" min="0" max="100" step="0.1" inputmode="decimal">
 						<div id="game-menu-sound-settings" hidden>
 						<label for="game-menu-wall-sound">Wall-hit sound</label>
 						<select id="game-menu-wall-sound">
@@ -2179,6 +2211,33 @@ canvas {
 		    ? window.blackMazeSavedProgress.ball : 0;
 		  const coinCount = document.getElementById("coin-count");
 		  if (coinCount) coinCount.textContent = String(window.blackMazeCoinCount);
+		  const pitchMeter = document.getElementById("coin-pitch-meter");
+		  const pitchMeterFill = document.getElementById("coin-pitch-fill");
+		  window.blackMazePitchPercent = 0;
+		  const savedPitchFallRaw = localStorage.getItem("blackmaze-pitch-fall-v1");
+		  const savedPitchFall = Number(savedPitchFallRaw);
+		  window.blackMazePitchFallRate = savedPitchFallRaw !== null && Number.isFinite(savedPitchFall) && savedPitchFall >= 0 && savedPitchFall <= 100 ? savedPitchFall : 1;
+		  let pitchUpdatedAt = Date.now();
+		  const updatePitchMeter = () => {
+		    const pitch = Math.max(0, Math.min(100, Number(window.blackMazePitchPercent) || 0));
+		    window.blackMazePitchPercent = pitch;
+		    if (pitchMeterFill) pitchMeterFill.style.height = `${pitch}%`;
+		    if (pitchMeter) pitchMeter.setAttribute("aria-valuenow", String(Math.round(pitch)));
+		  };
+		  const decayPitch = () => {
+		    const now = Date.now();
+		    const elapsedSeconds = (now - pitchUpdatedAt) / 1000;
+		    pitchUpdatedAt = now;
+		    if (window.blackMazePitchPercent > 0) {
+		      window.blackMazePitchPercent = Math.max(0, window.blackMazePitchPercent - elapsedSeconds * window.blackMazePitchFallRate);
+		      updatePitchMeter();
+		    }
+		  };
+		  const updatePitchFall = () => {
+		    decayPitch();
+		    requestAnimationFrame(updatePitchFall);
+		  };
+		  requestAnimationFrame(updatePitchFall);
 		  window.saveBlackMazeProgress = () => {
 		    try {
 		      if (window.blackMazeGameSaveData) window.blackMazeSavedProgress.gameSaveData = window.blackMazeGameSaveData;
@@ -2189,6 +2248,9 @@ canvas {
 		  };
 		  window.collectBlackMazeCoin = () => {
 		    window.blackMazeCoinCount += 1;
+		    decayPitch();
+		    window.blackMazePitchPercent = Math.min(100, (Number(window.blackMazePitchPercent) || 0) + 10);
+		    updatePitchMeter();
 		    const count = document.getElementById("coin-count");
 		    if (count) count.textContent = String(window.blackMazeCoinCount);
 		    if (typeof window.playBlackMazeCoinSound === "function") window.playBlackMazeCoinSound();
@@ -2227,19 +2289,20 @@ canvas {
 		        { frequency: 698, endFrequency: 523, delay: 0.06, duration: 0.2, volume: 0.075, type: "sine" }
 		      ]
 		    };
-		    const playChime = () => playTonePattern(context, patterns[variant] || patterns[1]);
+		    const pitchMultiplier = 1 + (Number(window.blackMazePitchPercent) || 0) / 100;
+		    const playChime = () => playTonePattern(context, patterns[variant] || patterns[1], pitchMultiplier);
 		    if (context.state === "suspended") context.resume().then(playChime).catch(() => {});
 		    else playChime();
 		  };
-		  const playTonePattern = (context, events) => {
+		  const playTonePattern = (context, events, pitchMultiplier = 1) => {
 		    const now = context.currentTime;
 		    events.forEach(({ frequency, endFrequency, delay = 0, duration = 0.12, volume = 0.08, type = "sine" }) => {
 		      const start = now + delay;
 		      const oscillator = context.createOscillator();
 		      const gain = context.createGain();
 		      oscillator.type = type;
-		      oscillator.frequency.setValueAtTime(frequency, start);
-		      oscillator.frequency.exponentialRampToValueAtTime(endFrequency || frequency * 0.98, start + duration);
+		      oscillator.frequency.setValueAtTime(frequency * pitchMultiplier, start);
+		      oscillator.frequency.exponentialRampToValueAtTime((endFrequency || frequency * 0.98) * pitchMultiplier, start + duration);
 		      gain.gain.setValueAtTime(0.0001, start);
 		      gain.gain.exponentialRampToValueAtTime(volume, start + 0.008);
 		      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
@@ -2370,6 +2433,7 @@ canvas {
 		  const coinsInput = document.getElementById("game-menu-coins");
 		  const levelInput = document.getElementById("game-menu-level");
 		  const verticalFitInput = document.getElementById("game-menu-vertical-fit");
+		  const pitchFallInput = document.getElementById("game-menu-pitch-fall");
 		  const wallSoundSelect = document.getElementById("game-menu-wall-sound");
 		  const finishSoundSelect = document.getElementById("game-menu-finish-sound");
 		  const coinSoundSelect = document.getElementById("game-menu-coin-sound");
@@ -2382,6 +2446,10 @@ canvas {
 		  const savedVerticalFit = Number(localStorage.getItem("blackmaze-vertical-fit-v1"));
 		  verticalFitInput.value = String(Number.isFinite(savedVerticalFit) && savedVerticalFit >= 0.75 && savedVerticalFit <= 2.5 ? savedVerticalFit : 1.25);
 		  window.blackMazeVerticalFitCoefficient = Number(verticalFitInput.value);
+		  const savedPitchFallRaw = localStorage.getItem("blackmaze-pitch-fall-v1");
+		  const savedPitchFall = Number(savedPitchFallRaw);
+		  pitchFallInput.value = String(savedPitchFallRaw !== null && Number.isFinite(savedPitchFall) && savedPitchFall >= 0 && savedPitchFall <= 100 ? savedPitchFall : 1);
+		  window.blackMazePitchFallRate = Number(pitchFallInput.value);
 		  wallSoundSelect.value = "2";
 		  finishSoundSelect.value = "1";
 		  coinSoundSelect.value = "4";
@@ -2416,6 +2484,7 @@ canvas {
 		    const coins = Number(coinsInput.value);
 		    const level = Number(levelInput.value);
 		    const verticalFit = Number(verticalFitInput.value);
+		    const pitchFall = Number(pitchFallInput.value);
 		    if (!Number.isSafeInteger(coins) || coins < 0) {
 		      coinsInput.setCustomValidity("Enter a whole number of 0 or more.");
 		      coinsInput.reportValidity();
@@ -2434,6 +2503,13 @@ canvas {
 		      return;
 		    }
 		    verticalFitInput.setCustomValidity("");
+		    if (!Number.isFinite(pitchFall) || pitchFall < 0 || pitchFall > 100) {
+		      pitchFallInput.setCustomValidity("Enter a pitch fall rate from 0 to 100 percent per second.");
+		      pitchFallInput.reportValidity();
+		      return;
+		    }
+		    pitchFallInput.setCustomValidity("");
+		    localStorage.setItem("blackmaze-pitch-fall-v1", String(pitchFall));
 		    localStorage.setItem("blackmaze-vertical-fit-v1", String(verticalFit));
 		    localStorage.setItem("blackmaze-wall-sound-v1", wallSoundSelect.value);
 		    localStorage.setItem("blackmaze-finish-sound-v1", finishSoundSelect.value);
