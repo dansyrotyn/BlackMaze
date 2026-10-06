@@ -1008,6 +1008,47 @@ canvas {
   right: 3%;
   height: 100%;
   z-index: 10;
+  display: none !important;
+}
+
+#prestige-panel {
+  position: absolute;
+  top: 50%;
+  right: 3%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5vmin;
+  z-index: 12;
+  font-family: var(--game-font);
+}
+
+#prestige-multiplier {
+  padding: 0.45vmin 1.2vmin;
+  border-radius: 999px;
+  background: rgba(255, 248, 225, 0.94);
+  color: #684400;
+  font-size: 3vmin;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#prestige-button {
+  padding: 0.45vmin 1.2vmin;
+  border: 0;
+  border-radius: 999px;
+  background: #e4a928;
+  color: #241b08;
+  font-family: var(--game-font);
+  font-size: 2.5vmin;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#prestige-button:disabled {
+  opacity: 0.72;
+  cursor: default;
 }
 
 #ballbtn-img {
@@ -2260,6 +2301,10 @@ body.blackmaze-heat-removed #idle-progression {
 						<img id="ballbtn-img" />
 						<img id="newtag-img" />
 					</div>
+					<div id="prestige-panel" aria-label="Prestige multiplier">
+						<div id="prestige-multiplier">×1</div>
+						<button id="prestige-button" type="button" title="Buy three upgrades to unlock Prestige">PRESTIGE</button>
+					</div>
 				</div>
 				<div id="game-menu">
 					<button id="game-menu-toggle" type="button" aria-expanded="false" aria-controls="game-menu-panel">MENU</button>
@@ -2271,6 +2316,9 @@ body.blackmaze-heat-removed #idle-progression {
 						<div id="game-menu-progression" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-progression">
 							<label for="game-menu-coins">Gold coins</label>
 			<input id="game-menu-coins" type="number" min="0" step="1" inputmode="numeric">
+							<label for="game-menu-prestige-multiplier">Prestige multiplier (test)</label>
+			<input id="game-menu-prestige-multiplier" type="number" min="0.01" step="0.1" inputmode="decimal">
+							<small>Multiplies coin pickups, maze rewards, and feat rewards. 1 means normal rewards.</small>
 							<label for="game-menu-level">Current level (1–330)</label>
 			<input id="game-menu-level" type="number" min="1" max="330" step="1" inputmode="numeric">
 							<small>Current totals for testing. Set a value just below a milestone, then make one action to trigger its reward.</small>
@@ -2568,9 +2616,14 @@ body.blackmaze-heat-removed #idle-progression {
 		  window.blackMazeSavedProgress = savedProgress && typeof savedProgress === "object" ? savedProgress : {};
 		  const roundCoinAmount = value => Math.round(Number(value));
 		  const formatCoinAmount = value => String(roundCoinAmount(value));
+		  const formatPrestigeMultiplier = value => `×${Number.isInteger(value) ? value : Number(value.toFixed(2))}`;
 		  const savedCoinCount = Number(window.blackMazeSavedProgress.coins);
 		  window.blackMazeCoinCount = Number.isFinite(savedCoinCount) && savedCoinCount >= 0 && savedCoinCount <= Number.MAX_SAFE_INTEGER
 		    ? roundCoinAmount(savedCoinCount) : 0;
+		  const savedPrestigeMultiplier = Number(window.blackMazeSavedProgress.prestigeMultiplier);
+		  window.blackMazePrestigeMultiplier = Number.isFinite(savedPrestigeMultiplier) && savedPrestigeMultiplier > 0 ? savedPrestigeMultiplier : 1;
+		  const prestigeMultiplierLabel = document.getElementById("prestige-multiplier");
+		  if (prestigeMultiplierLabel) prestigeMultiplierLabel.textContent = formatPrestigeMultiplier(window.blackMazePrestigeMultiplier);
 		  window.blackMazeBallSkin = Number.isInteger(window.blackMazeSavedProgress.ball) && window.blackMazeSavedProgress.ball >= 0
 		    ? window.blackMazeSavedProgress.ball : 0;
 		  const HEAT_SCORE_ENABLED = false;
@@ -2798,6 +2851,11 @@ body.blackmaze-heat-removed #idle-progression {
 		    const level = Number(savedLevel);
 		    return [key, Number.isSafeInteger(level) && level >= 1 ? level : 1];
 		  }));
+		  const savedPrestigeUpgradeCount = Number(window.blackMazeSavedProgress.prestigeUpgradeCount);
+		  window.blackMazePrestigeUpgradeCount = Number.isSafeInteger(savedPrestigeUpgradeCount) && savedPrestigeUpgradeCount >= 0
+		    ? savedPrestigeUpgradeCount
+		    : IDLE_POWER_KEYS.reduce((count, key) => count + Math.max(0, window.blackMazeIdlePowerLevels[key] - 1), 0);
+		  const getPrestigeGain = () => Math.floor((Number(window.blackMazePrestigeUpgradeCount) || 0) / 3) / 10;
 		  window.renderBlackMazeIdleProgress = () => {
 		    for (const key of IDLE_POWER_KEYS) {
 		      const level = window.blackMazeIdlePowerLevels[key];
@@ -2815,6 +2873,16 @@ body.blackmaze-heat-removed #idle-progression {
 		        upgradeButton.setAttribute("aria-label", priceIsSafe ? `Upgrade ${IDLE_POWER_NAMES[key]} for ${price} coins` : `${IDLE_POWER_NAMES[key]} is at maximum level`);
 		      }
 		    }
+		    const prestigeButton = document.getElementById("prestige-button");
+		    if (prestigeButton) {
+		      const prestigeGain = getPrestigeGain();
+		      prestigeButton.disabled = prestigeGain < 0.1;
+		      prestigeButton.textContent = prestigeGain >= 0.1 ? `PRESTIGE +${prestigeGain.toFixed(1)}` : "PRESTIGE";
+		      prestigeButton.title = prestigeGain >= 0.1 ? "Reset upgrades and earn Prestige" : "Buy three upgrades to unlock Prestige";
+		      prestigeButton.setAttribute("aria-label", prestigeGain >= 0.1
+		        ? `Reset upgrades for ${prestigeGain.toFixed(1)} prestige`
+		        : `Prestige unavailable; ${3 - (window.blackMazePrestigeUpgradeCount % 3)} more upgrade${window.blackMazePrestigeUpgradeCount % 3 === 2 ? "" : "s"} needed`);
+		    }
 		  };
 		  for (const key of IDLE_POWER_KEYS) {
 		    const upgradeButton = document.getElementById(`idle-power-upgrade-${key}`);
@@ -2824,6 +2892,7 @@ body.blackmaze-heat-removed #idle-progression {
 		      const price = getIdlePowerUpgradePrice(key, level);
 		      if (!Number.isSafeInteger(price) || window.blackMazeCoinCount < price) return;
 		      window.blackMazeIdlePowerLevels[key] = level + 1;
+		      window.blackMazePrestigeUpgradeCount = Math.min(Number.MAX_SAFE_INTEGER, window.blackMazePrestigeUpgradeCount + 1);
 		      window.blackMazeCoinCount = roundCoinAmount(window.blackMazeCoinCount - price);
 		      if (coinCount) coinCount.textContent = formatCoinAmount(window.blackMazeCoinCount);
 		      const menuCoinsInput = document.getElementById("game-menu-coins");
@@ -2836,6 +2905,36 @@ body.blackmaze-heat-removed #idle-progression {
 		      if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
 		    });
 		  }
+		  const prestigeButton = document.getElementById("prestige-button");
+		  prestigeButton.addEventListener("click", () => {
+		    const prestigeGain = getPrestigeGain();
+		    if (prestigeButton.disabled || prestigeGain < 0.1) return;
+		    const levelLabel = document.getElementById("level-text");
+		    const displayedLevelMatch = levelLabel && levelLabel.textContent.match(/\d+/);
+		    const savedGameData = window.blackMazeGameSaveData && typeof window.blackMazeGameSaveData === "object"
+		      ? window.blackMazeGameSaveData
+		      : window.blackMazeSavedProgress.gameSaveData && typeof window.blackMazeSavedProgress.gameSaveData === "object"
+		        ? window.blackMazeSavedProgress.gameSaveData : {};
+		    const savedLevelIndex = Number(savedGameData["0_lev"]);
+		    const currentLevelIndex = displayedLevelMatch
+		      ? Math.max(0, Number(displayedLevelMatch[0]) - 1)
+		      : Number.isSafeInteger(savedLevelIndex) && savedLevelIndex >= 0 ? savedLevelIndex : 0;
+		    window.blackMazePrestigeMultiplier = Number((window.blackMazePrestigeMultiplier + prestigeGain).toFixed(2));
+		    if (prestigeMultiplierLabel) prestigeMultiplierLabel.textContent = formatPrestigeMultiplier(window.blackMazePrestigeMultiplier);
+		    window.blackMazePrestigeUpgradeCount = 0;
+		    window.blackMazeCoinCount = 0;
+		    window.blackMazeIdlePowerLevels.ball = 1;
+		    window.blackMazeIdlePowerLevels.heat = 1;
+		    window.blackMazeIdlePowerLevels.finish = 1;
+		    window.blackMazeIdlePowerLevels.coin = 1;
+		    window.blackMazeBallSkin = 0;
+		    window.blackMazeGameSaveData = { "0_lev": currentLevelIndex };
+		    window.blackMazeSavedProgress.gameSaveData = window.blackMazeGameSaveData;
+		    setFieldColorForLevel(1);
+		    window.renderBlackMazeIdleProgress();
+		    if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
+		    window.location.reload();
+		  });
 		  window.renderBlackMazeIdleProgress();
 		  setFieldColorForLevel(window.blackMazeIdlePowerLevels.coin);
 		  loadEconomicsFromTextFile();
@@ -2973,6 +3072,8 @@ body.blackmaze-heat-removed #idle-progression {
 		    try {
 		      if (window.blackMazeGameSaveData) window.blackMazeSavedProgress.gameSaveData = window.blackMazeGameSaveData;
 		      window.blackMazeSavedProgress.coins = window.blackMazeCoinCount;
+		      window.blackMazeSavedProgress.prestigeMultiplier = window.blackMazePrestigeMultiplier;
+		      window.blackMazeSavedProgress.prestigeUpgradeCount = window.blackMazePrestigeUpgradeCount;
 		      window.blackMazeSavedProgress.ball = window.blackMazeBallSkin;
 		      window.blackMazeSavedProgress.idlePowers = window.blackMazeIdlePowerLevels;
 		      window.blackMazeSavedProgress.heatScore = window.blackMazeHeatScore;
@@ -3065,7 +3166,8 @@ body.blackmaze-heat-removed #idle-progression {
 		  };
 		  window.awardBlackMazeFeatReward = (reward, caption) => {
 		    const previousCoins = Number(window.blackMazeCoinCount) || 0;
-		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(previousCoins + reward));
+		    const adjustedReward = roundCoinAmount(reward * window.blackMazePrestigeMultiplier);
+		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(previousCoins + adjustedReward));
 		    const grantedReward = roundCoinAmount(window.blackMazeCoinCount - previousCoins);
 		    const count = document.getElementById("coin-count");
 		    if (count) count.textContent = formatCoinAmount(window.blackMazeCoinCount);
@@ -3087,7 +3189,8 @@ body.blackmaze-heat-removed #idle-progression {
 		    window.awardBlackMazeFeatReward(reward, caption);
 		  };
 		  window.collectBlackMazeCoin = (ballNdcX, ballNdcY) => {
-		    const reward = getCoinCollectionReward();
+		    const baseReward = getCoinCollectionReward();
+		    const reward = roundCoinAmount(baseReward * window.blackMazePrestigeMultiplier);
 		    window.showBlackMazeCoinFloat(ballNdcX, ballNdcY, reward);
 		    window.blackMazeCoinCount = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(window.blackMazeCoinCount + reward));
 		    const count = document.getElementById("coin-count");
@@ -3338,6 +3441,7 @@ body.blackmaze-heat-removed #idle-progression {
 		    try { localStorage.setItem(menuScrollKey, String(menuScrollPosition)); } catch (_) {}
 		  }, { passive: true });
 		  const coinsInput = document.getElementById("game-menu-coins");
+		  const prestigeMultiplierInput = document.getElementById("game-menu-prestige-multiplier");
 		  const levelInput = document.getElementById("game-menu-level");
 		  const moveFeatCountInput = document.getElementById("game-menu-feat-move-count");
 		  const tileFeatCountInput = document.getElementById("game-menu-feat-tile-count");
@@ -3455,6 +3559,7 @@ body.blackmaze-heat-removed #idle-progression {
 		  const progress = window.blackMazeSavedProgress || {};
 		  const modeLevel = Number(progress.gameSaveData && progress.gameSaveData["0_lev"]);
 		  coinsInput.value = formatCoinAmount(window.blackMazeCoinCount);
+		  prestigeMultiplierInput.value = String(window.blackMazePrestigeMultiplier);
 		  levelInput.value = String(Number.isInteger(modeLevel) && modeLevel >= 0 ? modeLevel + 1 : 1);
 		  const savedZoom = Number(localStorage.getItem("blackmaze-zoom-coefficient-v1"));
 		  window.blackMazeZoomCoefficient = Number.isFinite(savedZoom) && savedZoom >= 0.75 && savedZoom <= 2.5 ? savedZoom : 1.2;
@@ -3517,6 +3622,7 @@ body.blackmaze-heat-removed #idle-progression {
 		  });
 		  document.getElementById("game-menu-apply").addEventListener("click", () => {
 		    const coins = Number(coinsInput.value);
+		    const prestigeMultiplier = Number(prestigeMultiplierInput.value);
 		    const level = Number(levelInput.value);
 		    const verticalFit = Number(verticalFitInput.value);
 		    const comboFallRate = Number(comboFallInput.value);
@@ -3534,6 +3640,12 @@ body.blackmaze-heat-removed #idle-progression {
 		    }
 		    coinsInput.setCustomValidity("");
 		    const normalizedCoins = Math.min(Number.MAX_SAFE_INTEGER, roundCoinAmount(coins));
+		    if (!Number.isFinite(prestigeMultiplier) || prestigeMultiplier < 0.01) {
+		      prestigeMultiplierInput.setCustomValidity("Enter a prestige multiplier of 0.01 or more.");
+		      prestigeMultiplierInput.reportValidity();
+		      return;
+		    }
+		    prestigeMultiplierInput.setCustomValidity("");
 		    if (!Number.isInteger(level) || level < 1 || level > 330) {
 		      levelInput.setCustomValidity("Enter a level from 1 to 330.");
 		      levelInput.reportValidity();
@@ -3614,6 +3726,10 @@ body.blackmaze-heat-removed #idle-progression {
 		    localStorage.setItem("blackmaze-coin-sound-v1", coinSoundSelect.value);
 		    const saved = window.blackMazeSavedProgress || {};
 		    saved.coins = normalizedCoins;
+		    window.blackMazePrestigeMultiplier = prestigeMultiplier;
+		    saved.prestigeMultiplier = prestigeMultiplier;
+		    const prestigeLabel = document.getElementById("prestige-multiplier");
+		    if (prestigeLabel) prestigeLabel.textContent = `×${Number.isInteger(prestigeMultiplier) ? prestigeMultiplier : Number(prestigeMultiplier.toFixed(2))}`;
 		    saved.gameSaveData = saved.gameSaveData || {};
 		    saved.gameSaveData["0_lev"] = level - 1;
 		    window.blackMazeSavedProgress = saved;
