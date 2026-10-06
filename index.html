@@ -2384,7 +2384,7 @@ body.blackmaze-heat-removed #idle-progression {
 						<button class="idle-power-upgrade" id="idle-power-upgrade-finish" type="button">1 ₿</button>
 					</div>
 					<div class="idle-power-widget" data-idle-power="coin">
-						<div class="idle-power-label" id="idle-power-label-coin">COIN 1</div>
+						<div class="idle-power-label" id="idle-power-label-coin">FIELD 1</div>
 						<button class="idle-power-upgrade" id="idle-power-upgrade-coin" type="button">1 ₿</button>
 					</div>
 				</div>
@@ -2546,7 +2546,7 @@ body.blackmaze-heat-removed #idle-progression {
 		})();
 		</script>
 		<script src="assets/models/monster/model.js"></script>
-		<script type="text/javascript" src="main.js"></script>
+		<script type="text/javascript" src="main.js?field-background-v1"></script>
 		<script>
 		(() => {
 		  const progressKey = "blackmaze-progress-v1";
@@ -2588,8 +2588,18 @@ body.blackmaze-heat-removed #idle-progression {
 		  const MOVE_FEAT_REWARD_EVERY = 100;
 		  const TILE_FEAT_REWARD_EVERY = 1000;
 		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
-		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Feat", coin: "Coin" };
-		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "FEAT", coin: "COIN" };
+		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Feat", coin: "Field" };
+		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "FEAT", coin: "FIELD" };
+		  const FIELD_COLOR_PALETTE = [
+		    "#ffffff", "#fff0e1", "#ffffe6", "#f2ffe6", "#e6fff0",
+		    "#e6ffff", "#e6f2ff", "#eee6ff", "#fae6ff", "#ffe6f2"
+		  ];
+		  const setFieldColorForLevel = level => {
+		    const fieldLevel = Math.max(1, Math.floor(Number(level) || 1));
+		    const color = FIELD_COLOR_PALETTE[(fieldLevel - 1) % FIELD_COLOR_PALETTE.length];
+		    window.blackMazeFieldColor = color;
+		    if (typeof window.blackMazeSetFieldColor === "function") window.blackMazeSetFieldColor(color);
+		  };
 		  const ECONOMICS = {
 		    coin_base_value: 1,
 		    maze_reward_base_value: 100,
@@ -2799,11 +2809,13 @@ body.blackmaze-heat-removed #idle-progression {
 		      if (key === "ball" && typeof window.blackMazeSelectSkinForBallPowerLevel === "function") {
 		        window.blackMazeSelectSkinForBallPowerLevel(level + 1);
 		      }
+		      if (key === "coin") setFieldColorForLevel(level + 1);
 		      window.renderBlackMazeIdleProgress();
 		      if (typeof window.saveBlackMazeProgress === "function") window.saveBlackMazeProgress();
 		    });
 		  }
 		  window.renderBlackMazeIdleProgress();
+		  setFieldColorForLevel(window.blackMazeIdlePowerLevels.coin);
 		  loadEconomicsFromTextFile();
 		  const comboMeter = document.getElementById("combo-meter");
 		  const comboMeterFill = document.getElementById("combo-meter-fill");
