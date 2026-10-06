@@ -2283,6 +2283,11 @@ body.blackmaze-heat-removed #idle-progression {
 			<input id="game-menu-upgrade-price-multiplier" type="number" min="0" step="0.1" inputmode="decimal">
 						</div>
 						<div id="game-menu-settings" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-settings" hidden>
+							<label class="menu-debug-toggle" for="game-menu-hide-blocked-cells">
+								<input id="game-menu-hide-blocked-cells" type="checkbox">
+								<span>Hide blocked cells (test)</span>
+							</label>
+							<small>Hides WALL and SOLID visuals while keeping their gameplay collision rules.</small>
 							<label class="menu-debug-toggle" for="game-menu-remove-heat">
 								<input id="game-menu-remove-heat" type="checkbox">
 								<span>Remove heat (test)</span>
@@ -2526,6 +2531,11 @@ body.blackmaze-heat-removed #idle-progression {
 		    window.blackMazeLowGraphics = false;
 		  }
 		  try {
+		    window.blackMazeHideBlockedCells = localStorage.getItem("blackmaze-hide-blocked-cells-v1") === "true";
+		  } catch (_) {
+		    window.blackMazeHideBlockedCells = false;
+		  }
+		  try {
 		    const savedMirrorLevels = localStorage.getItem(mirrorLevelsKey);
 		    window.blackMazeMirrorLevels = savedMirrorLevels === null ? true : savedMirrorLevels === "true";
 		  } catch (_) {
@@ -2546,7 +2556,7 @@ body.blackmaze-heat-removed #idle-progression {
 		})();
 		</script>
 		<script src="assets/models/monster/model.js"></script>
-		<script type="text/javascript" src="main.js?field-palette-soft-v1"></script>
+		<script type="text/javascript" src="main.js?hide-blocked-cells-v1"></script>
 		<script>
 		(() => {
 		  const progressKey = "blackmaze-progress-v1";
@@ -3376,6 +3386,15 @@ body.blackmaze-heat-removed #idle-progression {
 		    window.blackMazeMirrorLevels = mirrorLevelsInput.checked;
 		    try { localStorage.setItem(mirrorLevelsStorageKey, String(window.blackMazeMirrorLevels)); } catch (_) {}
 		    window.location.reload();
+		  });
+		  const hideBlockedCellsInput = document.getElementById("game-menu-hide-blocked-cells");
+		  const hideBlockedCellsStorageKey = "blackmaze-hide-blocked-cells-v1";
+		  hideBlockedCellsInput.checked = window.blackMazeHideBlockedCells === true;
+		  if (typeof window.blackMazeSetBlockedCellsHidden === "function") window.blackMazeSetBlockedCellsHidden(hideBlockedCellsInput.checked);
+		  hideBlockedCellsInput.addEventListener("change", () => {
+		    window.blackMazeHideBlockedCells = hideBlockedCellsInput.checked;
+		    try { localStorage.setItem(hideBlockedCellsStorageKey, String(window.blackMazeHideBlockedCells)); } catch (_) {}
+		    if (typeof window.blackMazeSetBlockedCellsHidden === "function") window.blackMazeSetBlockedCellsHidden(window.blackMazeHideBlockedCells);
 		  });
 		  const removeHeatInput = document.getElementById("game-menu-remove-heat");
 		  const removeHeatStorageKey = "blackmaze-remove-heat-v1";
