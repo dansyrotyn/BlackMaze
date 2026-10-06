@@ -2208,6 +2208,14 @@ canvas {
   z-index: 30;
   pointer-events: none;
 }
+body.blackmaze-heat-removed #combo-meter,
+body.blackmaze-heat-removed #combo-meter-label,
+body.blackmaze-heat-removed #idle-progression [data-idle-power="heat"] {
+  display: none !important;
+}
+body.blackmaze-heat-removed #idle-progression {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 @media screen and (orientation: landscape) {
   #level-text {
     top: 1.5vmin !important;
@@ -2270,8 +2278,16 @@ canvas {
 			<input id="game-menu-feat-move-count" type="number" min="0" step="1" inputmode="numeric">
 							<label for="game-menu-feat-tile-count">Current painted tile count (test)</label>
 			<input id="game-menu-feat-tile-count" type="number" min="0" step="1" inputmode="numeric">
+							<small>Upgrade price multiplier (test). 1 keeps the normal price; changes apply to all upgrade prices.</small>
+							<label for="game-menu-upgrade-price-multiplier">Upgrade price multiplier</label>
+			<input id="game-menu-upgrade-price-multiplier" type="number" min="0" step="0.1" inputmode="decimal">
 						</div>
 						<div id="game-menu-settings" class="menu-tab-content" role="tabpanel" aria-labelledby="game-menu-tab-settings" hidden>
+							<label class="menu-debug-toggle" for="game-menu-remove-heat">
+								<input id="game-menu-remove-heat" type="checkbox">
+								<span>Remove heat (test)</span>
+							</label>
+							<small>Hides the HEAT bar and upgrade, and disables combo bonuses from fast play.</small>
 							<label class="menu-debug-toggle" for="game-menu-mirror-levels">
 								<input id="game-menu-mirror-levels" type="checkbox">
 								<span>Mirror levels</span>
@@ -2521,6 +2537,12 @@ canvas {
 		  } catch (_) {
 		    window.blackMazeModifyVictorySound = false;
 		  }
+		  try {
+		    window.blackMazeHeatRemoved = localStorage.getItem("blackmaze-remove-heat-v1") === "true";
+		  } catch (_) {
+		    window.blackMazeHeatRemoved = false;
+		  }
+		  if (window.blackMazeHeatRemoved) document.body.classList.add("blackmaze-heat-removed");
 		})();
 		</script>
 		<script src="assets/models/monster/model.js"></script>
@@ -2579,6 +2601,24 @@ canvas {
 		      heat: { type: "linear", multiplier: 100 },
 		      coin: { type: "exponential", base: 2, multiplier: 50 }
 		    }
+		  };
+		  const upgradePriceMultiplierStorageKey = "blackmaze-upgrade-price-test-multiplier-v1";
+		  let initialUpgradePriceMultiplier = 1;
+		  try {
+		    const savedUpgradePriceMultiplierRaw = localStorage.getItem(upgradePriceMultiplierStorageKey);
+		    const savedUpgradePriceMultiplier = Number(savedUpgradePriceMultiplierRaw);
+		    if (savedUpgradePriceMultiplierRaw !== null && Number.isFinite(savedUpgradePriceMultiplier) && savedUpgradePriceMultiplier >= 0) {
+		      initialUpgradePriceMultiplier = savedUpgradePriceMultiplier;
+		    }
+		  } catch (_) {}
+		  window.blackMazeUpgradePriceMultiplier = initialUpgradePriceMultiplier;
+		  window.setBlackMazeUpgradePriceMultiplier = value => {
+		    const multiplier = Number(value);
+		    if (!Number.isFinite(multiplier) || multiplier < 0) return false;
+		    window.blackMazeUpgradePriceMultiplier = multiplier;
+		    try { localStorage.setItem(upgradePriceMultiplierStorageKey, String(multiplier)); } catch (_) {}
+		    if (typeof window.renderBlackMazeIdleProgress === "function") window.renderBlackMazeIdleProgress();
+		    return true;
 		  };
 		  window.blackMazeCoinPowerMultiplierCoef = ECONOMICS.coin_power_multiplier_coef;
 	  const economicsSourceStorageKey = "blackmaze-economics-source-v17";
@@ -2692,7 +2732,7 @@ canvas {
 		    else if (formula.type === "power") price = Math.pow(level, formula.exponent) * formula.multiplier;
 		    else if (formula.type === "exponential") price = Math.pow(formula.base, level) * formula.multiplier;
 		    else return NaN;
-		    return Math.ceil(price);
+		    return Math.ceil(price * window.blackMazeUpgradePriceMultiplier);
 		  };
 		  const getBallCoinValue = level => {
 		    const ballLevel = Math.max(1, Math.floor(Number(level) || 1));
@@ -2711,6 +2751,7 @@ canvas {
 		    return totalValue;
 		  };
 		  const getHeatCoefficient = () => {
+		    if (window.blackMazeHeatRemoved) return 1;
 		    const heatPercent = Math.max(0, Math.min(100, Number(window.blackMazeComboPercent) || 0));
 		    const heatPowerLevel = Math.max(1, Number(window.blackMazeIdlePowerLevels && window.blackMazeIdlePowerLevels.heat) || 1);
 		    const maximumHeatCoefficient = ECONOMICS.heat_max_base_coef * getHeatPowerValue(heatPowerLevel);
@@ -2844,7 +2885,12 @@ canvas {
 		    }
 		    if (comboMeter) comboMeter.setAttribute("aria-valuenow", String(Math.round(combo)));
 		  };
+		  window.refreshBlackMazeComboMeter = updateComboMeter;
 		  const decayCombo = () => {
+		    if (window.blackMazeHeatRemoved) {
+		      window.blackMazeComboPercent = 0;
+		      return;
+		    }
 		    const now = Date.now();
 		    const previousUpdateAt = comboUpdatedAt;
 		    comboUpdatedAt = now;
@@ -2905,10 +2951,12 @@ canvas {
 		    window.blackMazePaintedTileCount = Math.min(Number.MAX_SAFE_INTEGER, (Number(window.blackMazePaintedTileCount) || 0) + 1);
 		    if (paintedTileCount) paintedTileCount.textContent = String(window.blackMazePaintedTileCount);
 		    if (paintedTileTestInput && document.activeElement !== paintedTileTestInput) paintedTileTestInput.value = String(window.blackMazePaintedTileCount);
-		    decayCombo();
-		    window.delayBlackMazeComboFall(window.blackMazeComboHoldSeconds * 1000);
-		    window.blackMazeComboPercent = Math.min(100, (Number(window.blackMazeComboPercent) || 0) + 1);
-		    updateComboMeter();
+		    if (!window.blackMazeHeatRemoved) {
+		      decayCombo();
+		      window.delayBlackMazeComboFall(window.blackMazeComboHoldSeconds * 1000);
+		      window.blackMazeComboPercent = Math.min(100, (Number(window.blackMazeComboPercent) || 0) + 1);
+		      updateComboMeter();
+		    }
 		    if (window.blackMazePaintedTileCount % TILE_FEAT_REWARD_EVERY === 0) {
 		      window.awardBlackMazeFeatReward(getMazeCompletionReward() * 10, `${TILE_FEAT_REWARD_EVERY} 🟦 paints`);
 		    } else if (typeof window.saveBlackMazeProgress === "function") {
@@ -2916,7 +2964,7 @@ canvas {
 		    }
 		  };
 		  window.blackMazeBallMoved = () => {
-		    startComboFallAfterNextMove();
+		    if (!window.blackMazeHeatRemoved) startComboFallAfterNextMove();
 		    window.blackMazeBallMoveCount = Math.min(Number.MAX_SAFE_INTEGER, (Number(window.blackMazeBallMoveCount) || 0) + 1);
 		    if (ballMoveCount) ballMoveCount.textContent = String(window.blackMazeBallMoveCount);
 		    if (ballMoveTestInput && document.activeElement !== ballMoveTestInput) ballMoveTestInput.value = String(window.blackMazeBallMoveCount);
@@ -3278,6 +3326,19 @@ canvas {
 		  };
 		  configureFeatCounterInput(moveFeatCountInput, "blackMazeBallMoveCount", "ball-move-count", "moves");
 		  configureFeatCounterInput(tileFeatCountInput, "blackMazePaintedTileCount", "painted-tile-count", "painted tiles");
+		  const upgradePriceMultiplierInput = document.getElementById("game-menu-upgrade-price-multiplier");
+		  upgradePriceMultiplierInput.value = String(window.blackMazeUpgradePriceMultiplier);
+		  upgradePriceMultiplierInput.addEventListener("change", () => {
+		    const multiplier = Number(upgradePriceMultiplierInput.value);
+		    if (upgradePriceMultiplierInput.value.trim() === "" || !Number.isFinite(multiplier) || multiplier < 0) {
+		      upgradePriceMultiplierInput.setCustomValidity("Enter a price multiplier of 0 or more.");
+		      upgradePriceMultiplierInput.reportValidity();
+		      return;
+		    }
+		    upgradePriceMultiplierInput.setCustomValidity("");
+		    window.setBlackMazeUpgradePriceMultiplier(multiplier);
+		    upgradePriceMultiplierInput.value = String(multiplier);
+		  });
 		  const verticalFitInput = document.getElementById("game-menu-vertical-fit");
 		  const comboFallInput = document.getElementById("game-menu-combo-fall");
 		  const comboHoldInput = document.getElementById("game-menu-combo-hold");
@@ -3303,6 +3364,16 @@ canvas {
 		    window.blackMazeMirrorLevels = mirrorLevelsInput.checked;
 		    try { localStorage.setItem(mirrorLevelsStorageKey, String(window.blackMazeMirrorLevels)); } catch (_) {}
 		    window.location.reload();
+		  });
+		  const removeHeatInput = document.getElementById("game-menu-remove-heat");
+		  const removeHeatStorageKey = "blackmaze-remove-heat-v1";
+		  removeHeatInput.checked = window.blackMazeHeatRemoved === true;
+		  removeHeatInput.addEventListener("change", () => {
+		    window.blackMazeHeatRemoved = removeHeatInput.checked;
+		    document.body.classList.toggle("blackmaze-heat-removed", window.blackMazeHeatRemoved);
+		    if (window.blackMazeHeatRemoved) window.blackMazeComboPercent = 0;
+		    if (typeof window.refreshBlackMazeComboMeter === "function") window.refreshBlackMazeComboMeter();
+		    try { localStorage.setItem(removeHeatStorageKey, String(window.blackMazeHeatRemoved)); } catch (_) {}
 		  });
 		  const modifyVictorySoundInput = document.getElementById("game-menu-modify-victory-sound");
 		  const modifyVictorySoundStorageKey = "blackmaze-modify-victory-sound-v1";
