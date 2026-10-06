@@ -2346,6 +2346,11 @@ body.blackmaze-heat-removed #idle-progression {
 								<span>Mirror levels</span>
 							</label>
 							<small id="game-menu-mirror-levels-note">Mirrors levels 5 and onward from left to right. Changing this setting reloads the game.</small>
+							<label class="menu-debug-toggle" for="game-menu-prestige-reset-level">
+								<input id="game-menu-prestige-reset-level" type="checkbox">
+								<span>Reset level on Prestige</span>
+							</label>
+							<small>When enabled, Prestige starts again at level 1. By default it keeps your current level.</small>
 							<label class="menu-debug-toggle" for="game-menu-modify-victory-sound">
 								<input id="game-menu-modify-victory-sound" type="checkbox">
 								<span>Modify victory sound</span>
@@ -2916,9 +2921,11 @@ body.blackmaze-heat-removed #idle-progression {
 		      : window.blackMazeSavedProgress.gameSaveData && typeof window.blackMazeSavedProgress.gameSaveData === "object"
 		        ? window.blackMazeSavedProgress.gameSaveData : {};
 		    const savedLevelIndex = Number(savedGameData["0_lev"]);
-		    const currentLevelIndex = displayedLevelMatch
-		      ? Math.max(0, Number(displayedLevelMatch[0]) - 1)
-		      : Number.isSafeInteger(savedLevelIndex) && savedLevelIndex >= 0 ? savedLevelIndex : 0;
+		    const currentLevelIndex = window.blackMazePrestigeResetsLevel
+		      ? 0
+		      : displayedLevelMatch
+		        ? Math.max(0, Number(displayedLevelMatch[0]) - 1)
+		        : Number.isSafeInteger(savedLevelIndex) && savedLevelIndex >= 0 ? savedLevelIndex : 0;
 		    window.blackMazePrestigeMultiplier = Number((window.blackMazePrestigeMultiplier + prestigeGain).toFixed(2));
 		    if (prestigeMultiplierLabel) prestigeMultiplierLabel.textContent = formatPrestigeMultiplier(window.blackMazePrestigeMultiplier);
 		    window.blackMazePrestigeUpgradeCount = 0;
@@ -3494,6 +3501,14 @@ body.blackmaze-heat-removed #idle-progression {
 		  skinDebugVisualsInput.addEventListener("change", () => {
 		    window.blackMazeShowLockedSkinVisuals = skinDebugVisualsInput.checked;
 		    localStorage.setItem(skinDebugVisualsStorageKey, String(window.blackMazeShowLockedSkinVisuals));
+		  });
+		  const prestigeResetLevelInput = document.getElementById("game-menu-prestige-reset-level");
+		  const prestigeResetLevelStorageKey = "blackmaze-prestige-reset-level-v1";
+		  window.blackMazePrestigeResetsLevel = localStorage.getItem(prestigeResetLevelStorageKey) === "true";
+		  prestigeResetLevelInput.checked = window.blackMazePrestigeResetsLevel;
+		  prestigeResetLevelInput.addEventListener("change", () => {
+		    window.blackMazePrestigeResetsLevel = prestigeResetLevelInput.checked;
+		    try { localStorage.setItem(prestigeResetLevelStorageKey, String(window.blackMazePrestigeResetsLevel)); } catch (_) {}
 		  });
 		  const mirrorLevelsInput = document.getElementById("game-menu-mirror-levels");
 		  const mirrorLevelsStorageKey = "blackmaze-mirror-levels-v1";
