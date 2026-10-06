@@ -2600,6 +2600,15 @@ body.blackmaze-heat-removed #idle-progression {
 		  const IDLE_POWER_KEYS = ["ball", "heat", "finish", "coin"];
 		  const IDLE_POWER_NAMES = { ball: "Ball", heat: "Heat", finish: "Feat", coin: "Field" };
 		  const IDLE_POWER_LABELS = { ball: "BALL", heat: "HEAT", finish: "FEAT", coin: "FIELD" };
+		  const getBall3DSkinProgress = ballLevel => {
+		    const level = Math.max(1, Math.floor(Number(ballLevel) || 1));
+		    if (level < 2) return "";
+		    const next3DSkinLevel = 5 + Math.floor((level - 2) / 3) * 3;
+		    if (next3DSkinLevel > 35) return "";
+		    const totalSteps = 3;
+		    const currentStep = ((level - 2) % 3) + 1;
+		    return ` (${currentStep}/${totalSteps})`;
+		  };
 		  const FIELD_COLOR_PALETTE = [
 		    "#ffffff", "#8bb2e0", "#ffebb3", "#ea8080", "#80e4a9",
 		    "#d580ff", "#ffb680", "#80dcea", "#fa80ab", "#a2adb2"
@@ -2795,7 +2804,10 @@ body.blackmaze-heat-removed #idle-progression {
 		      const price = getIdlePowerUpgradePrice(key, level);
 		      const levelLabel = document.getElementById(`idle-power-label-${key}`);
 		      const upgradeButton = document.getElementById(`idle-power-upgrade-${key}`);
-		      if (levelLabel) levelLabel.textContent = `${IDLE_POWER_LABELS[key]} ${level}`;
+		      if (levelLabel) {
+		        const skinProgress = key === "ball" ? getBall3DSkinProgress(level) : "";
+		        levelLabel.textContent = `${IDLE_POWER_LABELS[key]} ${level}${skinProgress}`;
+		      }
 		      if (upgradeButton) {
 		        const priceIsSafe = Number.isSafeInteger(price);
 		        upgradeButton.textContent = priceIsSafe ? `${price} ₿` : "MAX LEVEL";
